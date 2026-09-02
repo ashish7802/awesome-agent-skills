@@ -250,20 +250,56 @@ Return ONLY valid JSON matching this schema:
 
       const userMessage = `Audit the following AI agent skill/rule file (Filename: ${fileName || 'unnamed-rule.mdc'}):\n\n\`\`\`markdown\n${content}\n\`\`\``;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3.7-flash",
-        contents: [
-          { role: "user", parts: [{ text: `${systemPrompt}\n\n${userMessage}` }] },
-        ],
-        config: {
-          temperature: 0.1,
-          responseMimeType: "application/json",
-        },
-      });
+      let responseText = "";
+      try {
+        // Attempt Gemini API call with retry on 503 high-demand spike
+        let attempt = 0;
+        let lastErr: unknown = null;
+        let response = null;
 
-      const responseText = response.text || "";
-      
-      // Clean JSON if needed
+        while (attempt < 2 && !response) {
+          try {
+            attempt++;
+            response = await ai.models.generateContent({
+              model: "gemini-3.7-flash",
+              contents: [
+                { role: "user", parts: [{ text: `${systemPrompt}\n\n${userMessage}` }] },
+              ],
+              config: {
+                temperature: 0.1,
+                responseMimeType: "application/json",
+              },
+            });
+          } catch (apiErr: unknown) {
+            lastErr = apiErr;
+            const errMsg = apiErr instanceof Error ? apiErr.message : String(apiErr);
+            console.warn(`[Gemini API] Attempt ${attempt} failed:`, errMsg);
+            if (attempt < 2 && (errMsg.includes("503") || errMsg.includes("high demand") || errMsg.includes("UNAVAILABLE"))) {
+              // Quick backoff before 2nd attempt
+              await new Promise((resolve) => setTimeout(resolve, 1000));
+            } else {
+              break;
+            }
+          }
+        }
+
+        if (response?.text) {
+          responseText = response.text;
+        } else {
+          throw lastErr || new Error("Empty response from Gemini API");
+        }
+      } catch (geminiError) {
+        console.warn("[Gemini API] Failed or overloaded, seamlessly engaging heuristic auditor fallback:", geminiError);
+        const fallbackReport = runHeuristicAudit(content, fileName);
+        return res.json({
+          success: true,
+          report: fallbackReport,
+          engine: "heuristic-fallback",
+          notice: "Audit completed using deterministic rule validator (AI model experienced temporary load spike).",
+        });
+      }
+
+      // Clean and parse JSON
       let parsedReport;
       try {
         const cleaned = responseText.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
