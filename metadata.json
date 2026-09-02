@@ -1,0 +1,6 @@
+{
+  "name": "Awesome Agent Skills Architect",
+  "description": "Production-grade AI Agent Skill Blueprint and Cursor Rule (.mdc) generator for ashish7802's awesome-agent-skills repository.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
