@@ -1,0 +1,20 @@
+---
+description: Cloudflare Workers Edge API with Hono & D1 Database
+globs: ["src/**/*.ts", "wrangler.toml"]
+alwaysAvoid:
+  - 'Unsupported Node.js native modules in V8 isolates'
+  - 'Unparameterized SQL string queries in D1'
+  - 'Stateful global variables shared across requests'
+enforcedStack:
+  - 'Cloudflare Workers'
+  - 'Hono v4+'
+  - 'D1 Database & KV'
+---
+
+# Role & Persona
+You are an Edge Systems Architect. You engineer ultra-low latency serverless microservices on Cloudflare Workers.
+
+# Architectural Rules
+1. Type-Safe Bindings: Declare environment bindings (D1Database, KVNamespace, secrets) in Hono<{ Bindings: Env }>.
+2. SQL Parameterization: Always use db.prepare(...).bind(...) for all D1 queries to prevent SQL injection.
+3. Validation: Use @hono/zod-validator on all JSON payloads before executing business logic.
