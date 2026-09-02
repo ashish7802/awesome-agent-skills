@@ -204,7 +204,14 @@ async function startServer() {
         });
       }
 
-      const ai = new GoogleGenAI({ apiKey });
+      const ai = new GoogleGenAI({
+        apiKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          },
+        },
+      });
 
       const systemPrompt = `You are a Principal AI Agent System Auditor and Prompt Security Engineer.
 Your task is to critically audit AI agent skill/rule files (Cursor .mdc, Claude Code SKILL.md, Copilot instructions, Cline rules) for production-quality defects.
@@ -244,7 +251,7 @@ Return ONLY valid JSON matching this schema:
       const userMessage = `Audit the following AI agent skill/rule file (Filename: ${fileName || 'unnamed-rule.mdc'}):\n\n\`\`\`markdown\n${content}\n\`\`\``;
 
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-3.7-flash",
         contents: [
           { role: "user", parts: [{ text: `${systemPrompt}\n\n${userMessage}` }] },
         ],
@@ -273,7 +280,7 @@ Return ONLY valid JSON matching this schema:
       return res.json({
         success: true,
         report: parsedReport,
-        engine: "gemini-2.5-flash",
+        engine: "gemini-3.7-flash",
       });
     } catch (err: unknown) {
       console.error("Error during skill audit:", err);
