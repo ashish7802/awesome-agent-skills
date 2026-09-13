@@ -1,17 +1,66 @@
 ---
-description: Playwright End-to-End & Automated QA Architecture
-globs: ["e2e/**/*.spec.ts", "playwright.config.ts"]
+description: Enforces user-centric locators, hermetic test fixtures, and automated accessibility auditing.
+globs: ["e2e/**/*.spec.ts","tests/**/*.spec.ts","playwright.config.ts"]
 alwaysAvoid:
-  - 'Hardcoded page.waitForTimeout() sleeps'
-  - 'Fragile DOM CSS class queries (.col > .btn)'
+  - "Using fragile CSS selectors (#id, .class > div) instead of accessible getByRole or getByLabel"
+  - "Adding hardcoded arbitrary page.waitForTimeout(5000) sleeps (causes flaky builds)"
+  - "Sharing mutable database state across concurrent test workers"
 enforcedStack:
-  - 'Playwright 1.48+'
-  - 'TypeScript'
+  - "Playwright 1.48+"
+  - "TypeScript"
+  - "Docker"
+  - "Axe Core a11y"
 ---
 
-# Role & Persona
-You are a Staff Quality Engineer. You write deterministic, zero-flake Playwright E2E suites with accessibility checks.
+# Part 1: Metadata & Trigger Scope
+- **Skill Name**: Playwright E2E & Visual Regression Testing
+- **File Globs**: `e2e/**/*.spec.ts`, `tests/**/*.spec.ts`, `playwright.config.ts`
+- **Enforced Stack**: Playwright 1.48+, TypeScript, Docker, Axe Core a11y
+- **Target Runtime**: Cursor (.mdc)
 
-# Architectural Rules
-1. Accessible Locators: Strictly use page.getByRole, page.getByLabel, and page.getByPlaceholder.
-2. Web-First Matchers: Always use auto-retrying await expect(locator).toBeVisible().
+# Part 2: System Boundary & Prohibitions
+## Role & Persona
+Staff Test Automation & Quality Assurance Engineer.
+
+## Always Avoid (Hard Prohibitions)
+1. Using fragile CSS selectors (#id, .class > div) instead of accessible getByRole or getByLabel
+2. Adding hardcoded arbitrary page.waitForTimeout(5000) sleeps (causes flaky builds)
+3. Sharing mutable database state across concurrent test workers
+
+## Hard Invariants
+1. All locators must prioritize accessibility attributes: page.getByRole, getByLabel, getByText.
+2. Assertions must use auto-retrying web-first matchers: await expect(locator).toBeVisible().
+3. Every primary user journey test must execute an automated axe-core accessibility check.
+
+# Part 3: Master Instruction Prompt
+1. Resilient Locators: Target interactive elements with getByRole('button', { name: 'Submit' }).
+2. Web-First Assertions: Always await expect(). Avoid evaluating raw booleans with assertTrue.
+3. Hermetic Test Data: Seed isolated tenant records in test.beforeEach() using unique timestamp prefixes.
+
+# Part 4: Verified Implementation Standard vs Prohibited Anti-Pattern
+
+## Prohibited Anti-Pattern: Fragile CSS selectors and hardcoded sleep
+```
+test('login test', async ({ page }) => {
+  await page.click('.btn-primary > span'); // Fragile DOM path
+  await page.waitForTimeout(3000); // Flaky sleep
+  expect(await page.locator('#welcome').innerText()).toContain('Admin');
+});
+```
+
+## Verified Production Standard: Resilient accessible locators with web-first assertions
+```
+import { test, expect } from '@playwright/test';
+
+test('user login flow', async ({ page }) => {
+  await page.goto('/login');
+  await page.getByLabel('Email address').fill('admin@company.com');
+  await page.getByLabel('Password').fill('SecurePassword123!');
+  await page.getByRole('button', { name: 'Sign in' }).click();
+
+  await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
+});
+```
+
+## Architectural Justification
+User-facing locators emulate how real assistive tech users navigate your application and never break when internal CSS classes change.

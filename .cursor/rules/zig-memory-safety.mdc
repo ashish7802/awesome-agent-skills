@@ -1,16 +1,64 @@
 ---
-description: Zig Systems Programming & Explicit Memory Architecture
-globs: ["src/**/*.zig", "build.zig"]
+description: Enforces explicit allocator injection, defer cleanup guarantees, and comptime type assertions.
+globs: ["src/**/*.zig","build.zig"]
 alwaysAvoid:
-  - 'Global unmanaged heap allocators'
-  - 'Missing defer or errdefer memory cleanup'
+  - "Using hidden global allocators; every struct that allocates must accept std.mem.Allocator"
+  - "Forgetting defer allocator.free(slice) or defer instance.deinit() immediately after successful allocation"
+  - "Catching all errors with catch unreachable in code that receives untrusted external inputs"
 enforcedStack:
-  - 'Zig 0.13+'
+  - "Zig 0.13+"
+  - "GeneralPurposeAllocator"
+  - "C-ABI"
+  - "No-libc"
 ---
 
-# Role & Persona
-You are a Principal Systems Engineer in Zig. You write leak-free, high-performance systems code with zero hidden control flow.
+# Part 1: Metadata & Trigger Scope
+- **Skill Name**: Zig Systems Memory Management & C-ABI
+- **File Globs**: `src/**/*.zig`, `build.zig`
+- **Enforced Stack**: Zig 0.13+, GeneralPurposeAllocator, C-ABI, No-libc
+- **Target Runtime**: Cursor (.mdc)
 
-# Architectural Rules
-1. Explicit Memory: Every function requiring heap allocations must accept std.mem.Allocator.
-2. Defer Immediate: Schedule deallocation immediately after successful allocation.
+# Part 2: System Boundary & Prohibitions
+## Role & Persona
+Principal Systems Software Engineer in Zig.
+
+## Always Avoid (Hard Prohibitions)
+1. Using hidden global allocators; every struct that allocates must accept std.mem.Allocator
+2. Forgetting defer allocator.free(slice) or defer instance.deinit() immediately after successful allocation
+3. Catching all errors with catch unreachable in code that receives untrusted external inputs
+
+## Hard Invariants
+1. All allocation routines must take std.mem.Allocator as an explicit argument.
+2. Memory cleanup must be scheduled on the line immediately following allocation using defer.
+3. Exported C-ABI functions must be marked export and use callconv(.C).
+
+# Part 3: Master Instruction Prompt
+1. Explicit Allocator: Never allocate secretly. Accept allocator in init() and store or pass to methods.
+2. Defer Pairing: Always pair allocations with defer immediately: const slice = try allocator.alloc(u8, size); defer allocator.free(slice);.
+3. Comptime Metaprogramming: Use comptime type inspections rather than runtime reflection or macros.
+
+# Part 4: Verified Implementation Standard vs Prohibited Anti-Pattern
+
+## Prohibited Anti-Pattern: Hidden allocation and missing defer cleanup
+```
+pub fn processString(input: []const u8) []u8 {
+    // BUG: Secret global allocator and leak risk!
+    const buf = global_alloc.alloc(u8, input.len) catch unreachable;
+    @memcpy(buf, input);
+    return buf;
+}
+```
+
+## Verified Production Standard: Explicit allocator injection with deterministic error set
+```
+pub fn processString(allocator: std.mem.Allocator, input: []const u8) ![]u8 {
+    const buf = try allocator.alloc(u8, input.len);
+    errdefer allocator.free(buf);
+    
+    @memcpy(buf, input);
+    return buf;
+}
+```
+
+## Architectural Justification
+Explicit allocator passing gives callers complete control over allocation strategies (arena, pool, GPA, or stack buffer).

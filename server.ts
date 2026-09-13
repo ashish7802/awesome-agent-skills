@@ -19,17 +19,17 @@ function runHeuristicAudit(content: string, fileName?: string) {
   const lower = content.toLowerCase();
   const lines = content.split('\n');
 
-  let triggerScore = 80;
-  let fabScore = 95;
-  let dupScore = 85;
-  let actScore = 80;
-  let antiScore = 75;
+  let triggerScore = 95;
+  let fabScore = 100;
+  let dupScore = 95;
+  let actScore = 95;
+  let antiScore = 95;
 
   // 1. Trigger Clarity Check
   const hasGlobs = /globs|file_triggers|target_files|\.mdc|match/i.test(content);
   const hasCatchAll = /\*\*\/\*\.\*/.test(content) || /apply to all files/i.test(content);
   if (!hasGlobs) {
-    triggerScore -= 30;
+    triggerScore -= 40;
     issues.push({
       category: 'trigger_clarity',
       severity: 'warning',
@@ -38,7 +38,7 @@ function runHeuristicAudit(content: string, fileName?: string) {
       fix_suggestion: 'Define a precise `globs` array matching only relevant file paths.',
     });
   } else if (hasCatchAll) {
-    triggerScore -= 20;
+    triggerScore -= 25;
     issues.push({
       category: 'trigger_clarity',
       severity: 'warning',
@@ -58,7 +58,7 @@ function runHeuristicAudit(content: string, fileName?: string) {
 
   for (const item of fabricationKeywords) {
     if (item.regex.test(content)) {
-      fabScore -= 25;
+      fabScore -= 30;
       issues.push({
         category: 'fabrication_check',
         severity: 'critical',
@@ -79,7 +79,7 @@ function runHeuristicAudit(content: string, fileName?: string) {
 
   for (const item of vaguePhrases) {
     if (lower.includes(item.phrase)) {
-      actScore -= 15;
+      actScore -= 20;
       issues.push({
         category: 'actionability',
         severity: 'warning',
@@ -93,7 +93,7 @@ function runHeuristicAudit(content: string, fileName?: string) {
   // 4. Anti-pattern Completeness
   const hasAntiPatterns = /never|avoid|do not|don't|prohibited|anti-pattern|always avoid/i.test(content);
   if (!hasAntiPatterns) {
-    antiScore -= 35;
+    antiScore -= 45;
     issues.push({
       category: 'anti_pattern_completeness',
       severity: 'critical',
@@ -106,7 +106,7 @@ function runHeuristicAudit(content: string, fileName?: string) {
   // 5. Duplication Check
   const duplicates = lines.filter((l, i) => l.trim().length > 30 && lines.indexOf(l) !== i);
   if (duplicates.length > 2) {
-    dupScore -= 20;
+    dupScore -= 25;
     issues.push({
       category: 'duplication',
       severity: 'nit',
@@ -257,7 +257,7 @@ Return ONLY valid JSON matching this schema:
           try {
             attempt++;
             response = await ai.models.generateContent({
-              model: "gemini-3.7-flash",
+              model: "gemini-flash-latest",
               contents: [
                 { role: "user", parts: [{ text: `${systemPrompt}\n\n${userMessage}` }] },
               ],

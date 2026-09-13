@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   UploadCloud,
   FileCode,
@@ -13,9 +13,12 @@ import {
   Check,
   ShieldCheck,
   Zap,
+  History,
+  Trash2,
+  Clock,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { AuditReport } from '../types';
+import { AuditReport, AuditHistoryItem } from '../types';
 import { SAMPLE_PRESETS, SamplePreset } from '../data/samplePresets';
 import { ScoreGauge } from './ScoreGauge';
 import { IssuesList } from './IssuesList';
@@ -47,6 +50,64 @@ export const AuditorView: React.FC<AuditorViewProps> = ({
   const [dragOver, setDragOver] = useState(false);
   const [copiedReport, setCopiedReport] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Audit history tracking
+  const [history, setHistory] = useState<AuditHistoryItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('skill_audit_history');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [showHistory, setShowHistory] = useState(false);
+
+  // Sync new reports into audit history
+  useEffect(() => {
+    if (!report) return;
+    setHistory((prev) => {
+      // Check if top item is identical
+      if (
+        prev.length > 0 &&
+        prev[0].fileName === (report.file_name || fileName) &&
+        prev[0].overallScore === report.overall_score
+      ) {
+        return prev;
+      }
+      const newItem: AuditHistoryItem = {
+        id: `${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        timestamp: report.timestamp || new Date().toISOString(),
+        fileName: report.file_name || fileName,
+        overallScore: report.overall_score,
+        charCount: report.char_count || content.length,
+        report,
+        content,
+      };
+      const updated = [newItem, ...prev.filter((h) => h.id !== newItem.id)].slice(0, 10);
+      try {
+        localStorage.setItem('skill_audit_history', JSON.stringify(updated));
+      } catch (err) {
+        console.warn('Failed to persist audit history:', err);
+      }
+      return updated;
+    });
+  }, [report, fileName, content]);
+
+  const handleRestoreHistory = (item: AuditHistoryItem) => {
+    setContent(item.content);
+    setFileName(item.fileName);
+    setReport(item.report);
+    setShowHistory(false);
+  };
+
+  const handleClearHistory = () => {
+    setHistory([]);
+    try {
+      localStorage.removeItem('skill_audit_history');
+    } catch (err) {
+      console.warn('Failed to clear audit history:', err);
+    }
+  };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -164,21 +225,96 @@ ${report.rewritten_snippet}
             </p>
           </div>
 
-          {/* Quick Preset Buttons */}
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-[11px] text-slate-500 font-medium mr-1">Sample Presets:</span>
-            {SAMPLE_PRESETS.map((preset) => (
+          {/* Quick Preset Buttons & History Toggle */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[11px] text-slate-500 font-medium mr-1">Sample Presets:</span>
+              {SAMPLE_PRESETS.map((preset) => (
+                <button
+                  key={preset.id}
+                  onClick={() => handleLoadPreset(preset)}
+                  className="px-2.5 py-1 rounded-lg text-xs font-mono bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800 hover:border-slate-700 transition-colors cursor-pointer"
+                  title={preset.description}
+                >
+                  {preset.badge}
+                </button>
+              ))}
+            </div>
+
+            {history.length > 0 && (
               <button
-                key={preset.id}
-                onClick={() => handleLoadPreset(preset)}
-                className="px-2.5 py-1 rounded-lg text-xs font-mono bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800 hover:border-slate-700 transition-colors cursor-pointer"
-                title={preset.description}
+                type="button"
+                onClick={() => setShowHistory(!showHistory)}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors cursor-pointer ${
+                  showHistory
+                    ? 'bg-sky-500/20 text-sky-300 border-sky-500/50'
+                    : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-slate-200 hover:border-slate-700'
+                }`}
+                title="View recent audit reports"
               >
-                {preset.badge}
+                <History className="w-3.5 h-3.5 text-sky-400" />
+                <span>History ({history.length})</span>
               </button>
-            ))}
+            )}
           </div>
         </div>
+
+        {/* History Dropdown / Panel */}
+        {showHistory && history.length > 0 && (
+          <div className="p-4 rounded-xl border border-sky-500/30 bg-slate-950/80 space-y-3 animate-fade-in">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs font-semibold text-slate-200">
+                <Clock className="w-3.5 h-3.5 text-sky-400" />
+                <span>Recent Audit History ({history.length} saved)</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleClearHistory}
+                className="flex items-center gap-1 text-[11px] text-rose-400 hover:text-rose-300 transition-colors cursor-pointer"
+                title="Clear all saved audit history"
+              >
+                <Trash2 className="w-3 h-3" />
+                <span>Clear History</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-56 overflow-y-auto pr-1">
+              {history.map((item) => {
+                const isHigh = item.overallScore >= 90;
+                const isMid = item.overallScore >= 75;
+                const badgeColor = isHigh
+                  ? 'text-emerald-400 border-emerald-500/30 bg-emerald-950/40'
+                  : isMid
+                  ? 'text-amber-400 border-amber-500/30 bg-amber-950/40'
+                  : 'text-rose-400 border-rose-500/30 bg-rose-950/40';
+
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => handleRestoreHistory(item)}
+                    className="group p-2.5 rounded-lg border border-slate-800 bg-slate-900/60 hover:bg-slate-800/60 hover:border-sky-500/40 transition-all cursor-pointer flex flex-col justify-between gap-2"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-mono text-xs font-medium text-slate-200 truncate group-hover:text-sky-300 transition-colors">
+                        {item.fileName}
+                      </span>
+                      <span
+                        className={`text-[11px] font-bold font-mono px-1.5 py-0.5 rounded border ${badgeColor}`}
+                      >
+                        {item.overallScore}/100
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[10px] text-slate-400">
+                      <span>{new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      <span>{item.charCount} chars</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Drag & Drop or Paste Container */}
         <div

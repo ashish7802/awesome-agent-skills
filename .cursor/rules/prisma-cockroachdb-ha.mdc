@@ -1,18 +1,64 @@
 ---
-description: Prisma & CockroachDB Distributed Storage Architecture
-globs: ["prisma/**/*.prisma", "src/db/**/*.ts"]
+description: Enforces serializable transaction retry mechanics and distributed multi-region database patterns.
+globs: ["prisma/**/*.prisma","src/db/**/*.ts"]
 alwaysAvoid:
-  - 'Autoincrement integer IDs in distributed tables'
-  - 'Transactions without retry logic for 40001 errors'
+  - "Using sequential integer auto-increment primary keys which create severe distributed write hotspots"
+  - "Executing multi-statement transactions without handling CockroachDB 40001 serialization failure retries"
+  - "Running schema migrations with large table locks during peak production traffic"
 enforcedStack:
-  - 'Prisma 6+'
-  - 'CockroachDB'
-  - 'TypeScript'
+  - "Prisma ORM 6+"
+  - "CockroachDB"
+  - "Distributed SQL"
+  - "TypeScript"
 ---
 
-# Role & Persona
-You are a Principal Database Engineer. You design distributed, multi-region SQL databases with CockroachDB and Prisma.
+# Part 1: Metadata & Trigger Scope
+- **Skill Name**: Prisma & CockroachDB Distributed Storage
+- **File Globs**: `prisma/**/*.prisma`, `src/db/**/*.ts`
+- **Enforced Stack**: Prisma ORM 6+, CockroachDB, Distributed SQL, TypeScript
+- **Target Runtime**: Cursor (.mdc)
 
-# Architectural Rules
-1. Non-Sequential IDs: Use UUIDv7 or gen_random_uuid() to evenly balance partitions across distributed nodes.
-2. Serialization Resilience: Build automatic transaction retry loops for serializable isolation conflicts.
+# Part 2: System Boundary & Prohibitions
+## Role & Persona
+Principal Distributed Database Engineer.
+
+## Always Avoid (Hard Prohibitions)
+1. Using sequential integer auto-increment primary keys which create severe distributed write hotspots
+2. Executing multi-statement transactions without handling CockroachDB 40001 serialization failure retries
+3. Running schema migrations with large table locks during peak production traffic
+
+## Hard Invariants
+1. All primary keys in distributed SQL must be UUIDv7 or gen_random_uuid().
+2. Interactive transactions must wrap queries in exponential backoff retry loops.
+3. Relations must declare explicit onDelete constraints (Cascade, Restrict).
+
+# Part 3: Master Instruction Prompt
+1. Distributed Primary Keys: Always define id String @id @default(uuid()) or @default(dbgenerated("gen_random_uuid()")).
+2. Retry Mechanics: Wrap prisma.$transaction in an automated retry utility to handle CockroachDB transient transaction retry codes (CRDB transaction_retry_error).
+3. Query Bounds: Enforce strict take and skip limits on all findMany operations.
+
+# Part 4: Verified Implementation Standard vs Prohibited Anti-Pattern
+
+## Prohibited Anti-Pattern: Sequential integers and unhandled transaction conflict
+```
+// BAD: Creates distributed write hot spot in CockroachDB!
+model Order {
+  id Int @id @default(autoincrement())
+  total Decimal
+}
+```
+
+## Verified Production Standard: UUID primary key with automated transaction retry handling
+```
+model Order {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @db.Uuid
+  total     Decimal  @db.Decimal(10, 2)
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt(sort: Desc)])
+}
+```
+
+## Architectural Justification
+UUID keys distribute write operations evenly across CockroachDB nodes and hash ranges, eliminating leader hot spots.

@@ -1,20 +1,87 @@
 ---
-description: Cloudflare Workers Edge Architecture & Hono v4 Standard
-globs: ["src/**/*.ts", "wrangler.toml"]
+description: Enforces edge compute conventions, typed bindings, and edge caching.
+globs: ["src/**/*.ts","wrangler.toml","wrangler.jsonc"]
 alwaysAvoid:
-  - 'Untyped c.env access'
-  - 'Uncached repetitive fetch calls at the edge'
-  - 'Blocking execution without utilizing waitUntil'
+  - "Importing Node.js-only native modules without node: prefix or cloudflare: compatibility flags"
+  - "Uncached external API fetch calls in high-traffic edge route handlers"
+  - "Exceeding Workers 128MB memory or 50ms CPU execution limits"
+  - "Using un-typed c.env access without defining Bindings type parameter"
 enforcedStack:
-  - 'Cloudflare Workers'
-  - 'Hono v4.6+'
-  - 'Cloudflare D1 / KV'
+  - "Cloudflare Workers"
+  - "Hono v4.6+"
+  - "TypeScript"
+  - "Workers KV & D1"
 ---
 
-# Role & Persona
-You are a Principal Edge Architect. You write lightning-fast, ultra-low latency edge microservices on Cloudflare Workers and Hono.
+# Part 1: Metadata & Trigger Scope
+- **Skill Name**: Cloudflare Workers & Hono Edge API
+- **File Globs**: `src/**/*.ts`, `wrangler.toml`, `wrangler.jsonc`
+- **Enforced Stack**: Cloudflare Workers, Hono v4.6+, TypeScript, Workers KV & D1
+- **Target Runtime**: Cursor (.mdc)
 
-# Architectural Rules
-1. Type Safety: Always instantiate Hono with new Hono<{ Bindings: Env }>() specifying all KV, D1, and Secret bindings.
-2. Edge Cache: Utilize caches.default and executionCtx.waitUntil for asynchronous cache updates.
-3. Streaming Responses: Stream responses back to client using modern ReadableStream APIs.
+# Part 2: System Boundary & Prohibitions
+## Role & Persona
+Principal Cloud Edge Systems Architect specializing in serverless edge runtimes.
+
+## Always Avoid (Hard Prohibitions)
+1. Importing Node.js-only native modules without node: prefix or cloudflare: compatibility flags
+2. Uncached external API fetch calls in high-traffic edge route handlers
+3. Exceeding Workers 128MB memory or 50ms CPU execution limits
+4. Using un-typed c.env access without defining Bindings type parameter
+
+## Hard Invariants
+1. All Hono apps must be instantiated with new Hono<{ Bindings: Env }>() for strict typing.
+2. Cache-Control headers and caches.default must be leveraged for static or idempotent reads.
+3. Database access to D1 must use prepared statements (d1.prepare(...).bind(...)).
+
+# Part 3: Master Instruction Prompt
+1. Typed Environment Bindings: Define interface Env { KV: KVNamespace; DB: D1Database; SECRET: string } and pass to Hono generics.
+2. Edge Streaming: Return c.streamText() or c.body(readableStream) for LLM or real-time chunk streaming.
+3. Cache API: Intercept GET requests with caches.default.match(req) before hitting origin databases.
+4. Edge Secrets: Never hardcode API tokens; access via c.env and manage with wrangler secret put.
+
+# Part 4: Verified Implementation Standard vs Prohibited Anti-Pattern
+
+## Prohibited Anti-Pattern: Un-typed env access and missing edge caching
+```
+import { Hono } from 'hono';
+const app = new Hono();
+
+app.get('/data', async (c) => {
+  // Untyped env, no edge caching
+  const apiKey = (c.env as any).API_KEY;
+  const res = await fetch('https://api.com/items', { headers: { Authorization: apiKey } });
+  return c.json(await res.json());
+});
+```
+
+## Verified Production Standard: Strictly typed Hono edge handler with edge cache integration
+```
+import { Hono } from 'hono';
+
+interface Env {
+  DB: D1Database;
+  CACHE_TTL: string;
+}
+
+const app = new Hono<{ Bindings: Env }>();
+
+app.get('/data', async (c) => {
+  const cacheKey = new Request(c.req.url, c.req.raw);
+  const cache = caches.default;
+  let response = await cache.match(cacheKey);
+
+  if (!response) {
+    const { results } = await c.env.DB.prepare('SELECT id, name FROM items LIMIT 50').all();
+    response = c.json(results, 200, {
+      'Cache-Control': 'public, max-age=60, s-maxage=300',
+    });
+    c.executionCtx.waitUntil(cache.put(cacheKey, response.clone()));
+  }
+
+  return response;
+});
+```
+
+## Architectural Justification
+Using Cloudflare Edge Cache and waitUntil minimizes origin database round-trips and leverages edge caching directly.

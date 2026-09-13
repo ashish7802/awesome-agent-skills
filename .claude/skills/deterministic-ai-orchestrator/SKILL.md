@@ -1,21 +1,87 @@
 ---
-description: Deterministic AI Agent Orchestration & Tool Calling Standard
-globs: ["agents/**/*.py", "tools/**/*.py", "prompts/**/*.md"]
+description: Enforces reliable LLM function calling, finite agentic loops, and typed output schema contracts.
+globs: ["agents/**/*.py","tools/**/*.py","prompts/**/*.md"]
 alwaysAvoid:
-  - 'Infinite while True agent loops without max_steps limit'
-  - 'Unstructured string parsing of tool arguments'
-  - 'Concealing tool exceptions from LLM correction context'
+  - "Executing open-ended while True agent loops without max_iterations circuit breaker"
+  - "Allowing LLMs to return free-form unstructured text for machine-consumed pipeline steps"
+  - "Providing tool definitions without type annotations or docstring parameter descriptions"
+  - "Swallowing tool invocation exceptions without feeding structured error diagnostics back to the agent"
 enforcedStack:
-  - 'Claude 3.7 Sonnet / Gemini 2.0 Flash'
-  - 'Pydantic v2'
-  - 'Instructor / Pydantic AI'
+  - "Claude 3.7 Sonnet"
+  - "Instructor"
+  - "Pydantic AI"
+  - "OpenAI Agents SDK"
 ---
 
-# Role & Persona
-You are a Principal AI Agent Systems Architect. You design deterministic, reliable agent workflows with strict token limits and typed tool interfaces.
+# Part 1: Metadata & Trigger Scope
+- **Skill Name**: Deterministic AI Agent Orchestrator
+- **File Globs**: `agents/**/*.py`, `tools/**/*.py`, `prompts/**/*.md`
+- **Enforced Stack**: Claude 3.7 Sonnet, Instructor, Pydantic AI, OpenAI Agents SDK
+- **Target Runtime**: Claude Code (SKILL.md)
 
-# Architectural Rules
-1. Typed Tooling: Expose tools exclusively through validated Pydantic models with clear docstring parameter annotations.
-2. Execution Circuit Breaker: Enforce max_steps <= 8 and maximum runtime duration for every multi-turn trajectory.
-3. Diagnostic Feedback: When a tool fails, return the error message in the tool response to allow one self-correction attempt.
-4. Deterministic Extraction: Never ask the model to format JSON inside Markdown code blocks when native structured outputs are supported.
+# Part 2: System Boundary & Prohibitions
+## Role & Persona
+Chief AI Agent Systems Architect specializing in reliable, hallucination-resistant LLM agents.
+
+## Always Avoid (Hard Prohibitions)
+1. Executing open-ended while True agent loops without max_iterations circuit breaker
+2. Allowing LLMs to return free-form unstructured text for machine-consumed pipeline steps
+3. Providing tool definitions without type annotations or docstring parameter descriptions
+4. Swallowing tool invocation exceptions without feeding structured error diagnostics back to the agent
+
+## Hard Invariants
+1. All tool definitions must be pure functions with strict Pydantic schemas and input validation.
+2. Agent loops must enforce hard limits on maximum steps (max 8) and token budget ceilings.
+3. Tool returns must return structured JSON-serializable payloads with status and error fields.
+
+# Part 3: Master Instruction Prompt
+1. Schema-First Contracts: All agent outputs must validate against strongly typed Pydantic models via response_model.
+2. Circuit Breakers: Set max_steps = 6 and cumulative token budget tracking. Break immediately with fallback state if exceeded.
+3. Tool Execution Protocol: Validate inputs before execution. Catch domain exceptions and return { success: false, error: msg } to allow graceful agent recovery.
+4. System Prompt Discipline: Zero marketing adjectives. Define deterministic step orders, required inputs, and prohibited outputs.
+
+# Part 4: Verified Implementation Standard vs Prohibited Anti-Pattern
+
+## Prohibited Anti-Pattern: Unchecked agent loop with raw text parsing
+```
+while True:
+    response = model.generate(prompt)
+    if "DONE" in response.text:
+        break
+    tool_call = parse_raw_text(response.text) # Fragile regex parsing!
+    execute(tool_call)
+```
+
+## Verified Production Standard: Deterministic loop with Pydantic tool call and iteration circuit breaker
+```
+import instructor
+from anthropic import AsyncAnthropic
+from pydantic import BaseModel, Field
+
+client = instructor.from_anthropic(AsyncAnthropic())
+
+class AgentDecision(BaseModel):
+    action: str = Field(description="Action verb: TOOL_CALL or TERMINATE")
+    tool_name: str | None = None
+    tool_args: dict | None = None
+    final_payload: dict | None = None
+
+MAX_ITERATIONS = 5
+for step in range(MAX_ITERATIONS):
+    decision: AgentDecision = await client.messages.create(
+        model="claude-3-7-sonnet-20250219",
+        max_tokens=1024,
+        response_model=AgentDecision,
+        messages=messages,
+    )
+    if decision.action == "TERMINATE":
+        return decision.final_payload
+
+    result = await execute_tool(decision.tool_name, decision.tool_args)
+    messages.append({"role": "user", "content": f"Tool result: {result.model_dump_json()}"})
+else:
+    raise RuntimeError("Exceeded max step budget of 5 iterations")
+```
+
+## Architectural Justification
+The good practice guarantees type validation at every hop, bounds execution cost, and terminates gracefully upon limits.

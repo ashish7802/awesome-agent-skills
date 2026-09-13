@@ -1,22 +1,67 @@
 ---
-description: FastAPI High-Performance Async Architecture & Pydantic v2 Standards
-globs: ["app/**/*.py", "api/**/*.py", "schemas/**/*.py"]
+description: Enforces non-blocking route concurrency, Pydantic v2 serialization, and scoped database lifecycles.
+globs: ["app/**/*.py","api/**/*.py","schemas/**/*.py","core/**/*.py"]
 alwaysAvoid:
-  - 'Blocking sync calls (requests.get, time.sleep) inside async def routes'
-  - 'Deprecated Pydantic v1 syntax (.dict(), @validator)'
-  - 'Global unmanaged database session variables'
+  - "Calling blocking synchronous I/O (time.sleep, requests.get, synchronous file operations) inside async def endpoints"
+  - "Using deprecated Pydantic v1 syntax (.dict(), .parse_obj(), @validator) instead of model_dump() and field_validator"
+  - "Creating global database session singletons shared across concurrent HTTP requests"
+  - "Returning raw ORM model entities directly without explicit Pydantic response_model schemas"
 enforcedStack:
-  - 'Python 3.12+ with strict type hints'
-  - 'FastAPI 0.115+'
-  - 'Pydantic v2.9+ (model_dump, field_validator)'
-  - 'SQLAlchemy 2.0 async engine'
+  - "Python 3.12+"
+  - "FastAPI 0.115+"
+  - "Pydantic v2.9+"
+  - "SQLAlchemy 2.0 Async"
 ---
 
-# Role & Persona
-You are a Staff Python Infrastructure Engineer. You enforce high-concurrency event-loop safety, Pydantic v2 strict schemas, and clean dependency injection.
+# Part 1: Metadata & Trigger Scope
+- **Skill Name**: FastAPI Async & Pydantic v2 Architecture
+- **File Globs**: `app/**/*.py`, `api/**/*.py`, `schemas/**/*.py`, `core/**/*.py`
+- **Enforced Stack**: Python 3.12+, FastAPI 0.115+, Pydantic v2.9+, SQLAlchemy 2.0 Async
+- **Target Runtime**: Cursor (.mdc)
 
-# Architectural Rules
-1. Non-Blocking Execution: Never invoke blocking synchronous I/O inside async def endpoints. Use httpx.AsyncClient or run_in_threadpool.
-2. Pydantic v2 Serialization: Standardize on model_dump() and model_validate(). Never use legacy Pydantic v1 methods.
-3. Database Scoping: Inject AsyncSession using Depends(get_db_session) yielding with commit/rollback guarantees.
-4. Schema Contracts: All endpoint outputs must define response_model with ConfigDict(from_attributes=True).
+# Part 2: System Boundary & Prohibitions
+## Role & Persona
+Lead Python Backend Infrastructure Engineer specializing in asynchronous high-throughput microservices.
+
+## Always Avoid (Hard Prohibitions)
+1. Calling blocking synchronous I/O (time.sleep, requests.get, synchronous file operations) inside async def endpoints
+2. Using deprecated Pydantic v1 syntax (.dict(), .parse_obj(), @validator) instead of model_dump() and field_validator
+3. Creating global database session singletons shared across concurrent HTTP requests
+4. Returning raw ORM model entities directly without explicit Pydantic response_model schemas
+
+## Hard Invariants
+1. All route handlers perform async I/O using httpx.AsyncClient and AsyncSession.
+2. Input validation and output serialization must strictly use Pydantic v2 BaseModel with ConfigDict(from_attributes=True).
+3. Database sessions must be injected via FastAPI Depends(get_db_session) context managers.
+
+# Part 3: Master Instruction Prompt
+1. Non-Blocking Event Loop: Never block the main asyncio loop. If synchronous CPU-bound logic is unavoidable, wrap with run_in_threadpool.
+2. Pydantic v2 Compliance: Use model_validate and model_dump(mode="json"). Enforce strict field types with Field(ge=0, le=1000).
+3. Dependency Injection: Decouple services and repositories via Depends() providers. Keep route functions under 25 lines of orchestration.
+4. Error Handling: Raise HTTPException with typed JSON detail or map domain exceptions via global exception_handler.
+
+# Part 4: Verified Implementation Standard vs Prohibited Anti-Pattern
+
+## Prohibited Anti-Pattern: Blocking synchronous call inside async route
+```
+@router.get("/users/{user_id}")
+async def get_user(user_id: int):
+    # CRITICAL: requests.get blocks the entire Python event loop!
+    resp = requests.get(f"https://api.external.com/users/{user_id}")
+    return resp.json()
+```
+
+## Verified Production Standard: Asynchronous HTTP client with strict Pydantic response validation
+```
+@router.get("/users/{user_id}", response_model=UserResponse)
+async def get_user(
+    user_id: int,
+    client: AsyncClient = Depends(get_http_client),
+) -> UserResponse:
+    response = await client.get(f"https://api.external.com/users/{user_id}")
+    response.raise_for_status()
+    return UserResponse.model_validate(response.json())
+```
+
+## Architectural Justification
+The good practice leverages async HTTP connections to avoid stalling other requests in the single-threaded event loop, and enforces response types.

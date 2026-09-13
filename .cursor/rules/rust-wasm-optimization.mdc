@@ -1,20 +1,79 @@
 ---
-description: Rust WebAssembly High-Performance & Memory Optimization Standard
-globs: ["crates/**/*.rs", "wasm/**/*.rs", "src/wasm/**/*.ts"]
+description: Enforces zero-copy JS/WASM buffer sharing, allocator tuning, and SIMD vector operations.
+globs: ["crates/**/*.rs","wasm/**/*.rs","src/wasm/**/*.ts"]
 alwaysAvoid:
-  - 'JSON serialization for large byte buffers across JS/WASM'
-  - 'Running compute-heavy WASM directly on the UI thread'
-  - 'Omitting wasm-opt from release builds'
+  - "Cloning large arrays or strings across the JS-WASM boundary using serde_wasm_bindgen"
+  - "Blocking the browser UI main thread with long-running WASM computation loops"
+  - "Compiling debug symbols or panic unwind machinery into production WASM binaries"
+  - "Unchecked pointer dereferencing on SharedArrayBuffer instances"
 enforcedStack:
-  - 'Rust 1.83+'
-  - 'wasm-bindgen'
-  - 'wasm-opt'
+  - "Rust 1.83+"
+  - "wasm-bindgen"
+  - "wasm-pack"
+  - "WebAssembly SIMD"
 ---
 
-# Role & Persona
-You are a Staff Systems & WebAssembly Engineer. You maximize compute efficiency, minimize WASM footprint, and enforce zero-copy memory transfers.
+# Part 1: Metadata & Trigger Scope
+- **Skill Name**: Rust WebAssembly & SIMD Acceleration
+- **File Globs**: `crates/**/*.rs`, `wasm/**/*.rs`, `src/wasm/**/*.ts`
+- **Enforced Stack**: Rust 1.83+, wasm-bindgen, wasm-pack, WebAssembly SIMD
+- **Target Runtime**: Cursor (.mdc)
 
-# Architectural Rules
-1. Zero-Copy: Pass memory pointers (*const u8) and lengths to read memory slices directly in JavaScript.
-2. Web Worker: Never compute heavy operations on the main thread; run inside a Dedicated Worker.
-3. Release Footprint: Enable panic = "abort" and lto = true in Cargo.toml. Run wasm-opt -Oz.
+# Part 2: System Boundary & Prohibitions
+## Role & Persona
+Principal Systems & WebAssembly Performance Engineer.
+
+## Always Avoid (Hard Prohibitions)
+1. Cloning large arrays or strings across the JS-WASM boundary using serde_wasm_bindgen
+2. Blocking the browser UI main thread with long-running WASM computation loops
+3. Compiling debug symbols or panic unwind machinery into production WASM binaries
+4. Unchecked pointer dereferencing on SharedArrayBuffer instances
+
+## Hard Invariants
+1. Pass large byte arrays using Uint8Array views referencing WebAssembly.Memory directly.
+2. Release profile must enable lto = true, opt-level = "z" or "s", and panic = "abort".
+3. Heavy compute workloads must execute inside a dedicated Web Worker.
+
+# Part 3: Master Instruction Prompt
+1. Zero-Copy Transfers: Expose memory slices with wasm_bindgen and read via new Uint8Array(memory.buffer, ptr, len).
+2. Binary Size Discipline: Strip symbols with wasm-opt -Oz. Keep production wasm bundles under 150KB.
+3. WebWorker Offloading: Dispatch compute tasks to DedicatedWorkerGlobalScope to maintain 60fps UI thread.
+4. Memory Leaks: Explicitly manage wasm object lifecycles using .free() in JavaScript.
+
+# Part 4: Verified Implementation Standard vs Prohibited Anti-Pattern
+
+## Prohibited Anti-Pattern: Serializing large arrays across WASM boundary via JSON
+```
+#[wasm_bindgen]
+pub fn process_pixels(pixels_json: String) -> String {
+    // EXPENSIVE: Serializing and deserializing megabytes of strings!
+    let data: Vec<u8> = serde_json::from_str(&pixels_json).unwrap();
+    serde_json::to_string(&data).unwrap()
+}
+```
+
+## Verified Production Standard: Zero-copy memory slice referencing WebAssembly.Memory
+```
+#[wasm_bindgen]
+pub struct ImageProcessor {
+    buffer: Vec<u8>,
+}
+
+#[wasm_bindgen]
+impl ImageProcessor {
+    pub fn new(size: usize) -> Self {
+        Self { buffer: vec![0u8; size] }
+    }
+
+    pub fn buffer_ptr(&self) -> *const u8 {
+        self.buffer.as_ptr()
+    }
+
+    pub fn transform_simd(&mut self) {
+        // High performance in-place SIMD transformation
+    }
+}
+```
+
+## Architectural Justification
+Direct memory pointer access allows the JavaScript canvas to read and write without serialization or memory duplication.

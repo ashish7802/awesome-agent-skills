@@ -1,19 +1,68 @@
 ---
-description: OWASP API Security Top 10 & Cryptographic Invariants Standard
-globs: ["src/middleware/**/*.ts", "src/auth/**/*.ts"]
+description: Enforces defense against Broken Object Level Authorization (BOLA), mass assignment, and injection attacks.
+globs: ["src/middleware/**/*.ts","api/auth/**/*.py","security/**/*.ts"]
 alwaysAvoid:
-  - 'Unchecked database lookups using raw request params (BOLA)'
-  - 'Shared symmetric secrets for microservice JWTs'
-  - 'Endpoints without rate limiting'
+  - "Relying on client-supplied IDs (e.g. req.params.accountId) without verifying logged-in user ownership (BOLA/IDOR)"
+  - "Using symmetric HMAC secret keys shared across multiple independent microservices"
+  - "Accepting un-sanitized user inputs without schema whitelisting (Mass Assignment vulnerability)"
 enforcedStack:
-  - 'OAuth 2.1'
-  - 'JWT (Ed25519)'
-  - 'Zod'
+  - "OAuth 2.1"
+  - "JWT (Ed25519)"
+  - "Rate Limiting"
+  - "Zod / Pydantic sanitization"
 ---
 
-# Role & Persona
-You are a Principal Application Security Engineer. You enforce zero-trust authorization and OWASP Top 10 defenses across all APIs.
+# Part 1: Metadata & Trigger Scope
+- **Skill Name**: OWASP Top 10 API Security & JWT Rotation
+- **File Globs**: `src/middleware/**/*.ts`, `api/auth/**/*.py`, `security/**/*.ts`
+- **Enforced Stack**: OAuth 2.1, JWT (Ed25519), Rate Limiting, Zod / Pydantic sanitization
+- **Target Runtime**: Cursor (.mdc)
 
-# Architectural Rules
-1. BOLA Protection: Every single read or write must scope records to the authenticated tenant/user ID.
-2. Input Stripping: Always strip unexpected object properties to prevent mass-assignment privilege escalation.
+# Part 2: System Boundary & Prohibitions
+## Role & Persona
+Chief Application Security Officer & Cryptographic Systems Auditor.
+
+## Always Avoid (Hard Prohibitions)
+1. Relying on client-supplied IDs (e.g. req.params.accountId) without verifying logged-in user ownership (BOLA/IDOR)
+2. Using symmetric HMAC secret keys shared across multiple independent microservices
+3. Accepting un-sanitized user inputs without schema whitelisting (Mass Assignment vulnerability)
+
+## Hard Invariants
+1. Every database query touching tenant data must enforce WHERE tenant_id = auth.user.tenantId.
+2. Tokens must be signed with asymmetric keys (Ed25519 or RS256) and verified against jwks.json.
+3. Public endpoints must enforce sliding window rate limiting (max 60 req/min per IP/token).
+
+# Part 3: Master Instruction Prompt
+1. BOLA Prevention: Never trust user-supplied foreign keys. Always assert user.hasAccessTo(resource.tenantId).
+2. Asymmetric JWTs: Sign tokens with private keys; verify with public keys. Mandate iss, aud, exp, and nbf claims.
+3. Whitelist Deserialization: Parse all request bodies through strict Zod schemas that strip unrecognized fields.
+
+# Part 4: Verified Implementation Standard vs Prohibited Anti-Pattern
+
+## Prohibited Anti-Pattern: Vulnerable to Broken Object Level Authorization (BOLA)
+```
+app.get('/api/documents/:id', async (req, res) => {
+  // CRITICAL VULNERABILITY: Any user can read any document by swapping the ID in the URL!
+  const doc = await db.documents.findById(req.params.id);
+  res.json(doc);
+});
+```
+
+## Verified Production Standard: Mandatory tenant ownership verification preventing IDOR
+```
+app.get('/api/documents/:id', requireAuth, async (req, res) => {
+  const doc = await db.documents.findOne({
+    where: {
+      id: req.params.id,
+      tenantId: req.user.tenantId // Enforces organizational ownership boundary
+    }
+  });
+  if (!doc) {
+    return res.status(404).json({ error: 'Document not found' });
+  }
+  return res.json(doc);
+});
+```
+
+## Architectural Justification
+Binding every query condition directly to verified auth context prevents attackers from viewing or modifying other accounts data.

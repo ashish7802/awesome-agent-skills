@@ -1,17 +1,65 @@
 ---
-description: LangGraph Multi-Agent StateGraph Architecture Standard
-globs: ["graphs/**/*.py", "nodes/**/*.py"]
+description: Enforces cyclic StateGraph topologies, typed reducer accumulation, and persistent checkpointer state.
+globs: ["graphs/**/*.py","nodes/**/*.py","state/**/*.py"]
 alwaysAvoid:
-  - 'In-place state dictionary mutations'
-  - 'Infinite circular graph routing without step limits'
+  - "Using untyped global state dictionaries across StateGraph nodes"
+  - "Creating unconditional circular node transitions without exit conditional edges"
+  - "Running multi-agent collaborative graphs without persistent checkpointers for auditability"
 enforcedStack:
-  - 'LangGraph 0.2+'
-  - 'Python 3.12+'
+  - "LangGraph 0.2+"
+  - "LangChain Core"
+  - "Python 3.12+"
+  - "Checkpointers"
 ---
 
-# Role & Persona
-You are a Principal AI Agent Architect. You design multi-agent cyclic graph workflows with LangGraph.
+# Part 1: Metadata & Trigger Scope
+- **Skill Name**: LangGraph StateGraph & Multi-Agent Collaboration
+- **File Globs**: `graphs/**/*.py`, `nodes/**/*.py`, `state/**/*.py`
+- **Enforced Stack**: LangGraph 0.2+, LangChain Core, Python 3.12+, Checkpointers
+- **Target Runtime**: Cursor (.mdc)
 
-# Architectural Rules
-1. Typed Reducers: Always use Annotated reducers (such as add_messages) in your AgentState.
-2. Human-in-the-loop: Set interrupt_before on sensitive action nodes.
+# Part 2: System Boundary & Prohibitions
+## Role & Persona
+Principal Multi-Agent AI Architect.
+
+## Always Avoid (Hard Prohibitions)
+1. Using untyped global state dictionaries across StateGraph nodes
+2. Creating unconditional circular node transitions without exit conditional edges
+3. Running multi-agent collaborative graphs without persistent checkpointers for auditability
+
+## Hard Invariants
+1. State must be a TypedDict with explicit reducers (Annotated[Sequence[BaseMessage], operator.add]).
+2. Edges must return defined node identifiers or END.
+3. Critical actions (payment, delete, write-back) must trigger interrupt_before breakpoints.
+
+# Part 3: Master Instruction Prompt
+1. State Definition: Declare TypedDict with Annotated fields specifying how concurrent updates are merged.
+2. Conditional Routing: Implement routing functions returning string node names based on model tool_calls.
+3. Checkpoint Persistence: Instantiate graphs with compile(checkpointer=PostgresSaver(conn)).
+
+# Part 4: Verified Implementation Standard vs Prohibited Anti-Pattern
+
+## Prohibited Anti-Pattern: Untyped state mutation causing race conditions
+```
+def node_a(state):
+    state["messages"].append("hello") # Mutating state in place without reducer!
+    return state
+```
+
+## Verified Production Standard: Typed state reducer with immutable message appending
+```
+from typing import Annotated, TypedDict, Sequence
+from langchain_core.messages import BaseMessage
+from langgraph.graph.message import add_messages
+
+class AgentState(TypedDict):
+    messages: Annotated[Sequence[BaseMessage], add_messages]
+    next_step: str
+
+def researcher_node(state: AgentState) -> dict:
+    new_message = model.invoke(state["messages"])
+    return {"messages": [new_message]}
+```
+
+## Architectural Justification
+Reducers ensure deterministic state accumulation across concurrent branch executions and simplify time-travel debugging.

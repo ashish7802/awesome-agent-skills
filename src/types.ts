@@ -34,6 +34,16 @@ export interface AuditReport {
   char_count?: number;
 }
 
+export interface AuditHistoryItem {
+  id: string;
+  timestamp: string;
+  fileName: string;
+  overallScore: number;
+  charCount: number;
+  report: AuditReport;
+  content: string;
+}
+
 export type SkillCategory =
   | 'Fullstack & SaaS'
   | 'Backend & APIs'

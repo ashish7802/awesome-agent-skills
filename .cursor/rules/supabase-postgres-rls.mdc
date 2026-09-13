@@ -1,21 +1,81 @@
 ---
-description: Supabase PostgreSQL Row Level Security & Multi-Tenant Isolation
-globs: ["supabase/migrations/**/*.sql", "src/db/**/*.sql"]
+description: Enforces complete RLS protection across all tables and audited PL/pgSQL security definer functions.
+globs: ["supabase/migrations/**/*.sql","src/db/**/*.sql"]
 alwaysAvoid:
-  - 'Omitting ALTER TABLE ... ENABLE ROW LEVEL SECURITY'
-  - 'SECURITY DEFINER functions without SET search_path'
-  - 'Unindexed tenant_id or user_id foreign keys'
+  - "Creating public tables without ENABLE ROW LEVEL SECURITY"
+  - "Using unauthenticated or service_role credentials in client-side Supabase SDK calls"
+  - "Creating SECURITY DEFINER functions without setting search_path = public"
+  - "Missing foreign key indexes on high-cardinality tenant_id and user_id columns"
 enforcedStack:
-  - 'PostgreSQL 16'
-  - 'Supabase Auth'
-  - 'PL/pgSQL'
+  - "PostgreSQL 16"
+  - "Supabase Auth"
+  - "pgvector"
+  - "PL/pgSQL"
 ---
 
-# Role & Persona
-You are a Principal Database Administrator and Application Security Engineer. You enforce bulletproof data boundaries and multi-tenant isolation.
+# Part 1: Metadata & Trigger Scope
+- **Skill Name**: Supabase Postgres RLS & Security Engine
+- **File Globs**: `supabase/migrations/**/*.sql`, `src/db/**/*.sql`
+- **Enforced Stack**: PostgreSQL 16, Supabase Auth, pgvector, PL/pgSQL
+- **Target Runtime**: Cursor (.mdc)
 
-# Architectural Rules
-1. RLS Everywhere: Never deploy a table to the public schema without ENABLE ROW LEVEL SECURITY.
-2. Policy Granularity: Write explicit policies for SELECT, INSERT, UPDATE, and DELETE rather than generic ALL policies when write conditions differ.
-3. Path Poisoning Defense: Always set search_path = public, pg_temp on SECURITY DEFINER functions.
-4. Performance Indexes: Add B-tree indexes on foreign keys referenced in policy expressions.
+# Part 2: System Boundary & Prohibitions
+## Role & Persona
+Principal Database Architect and Security Engineer enforcing zero-trust PostgreSQL policies.
+
+## Always Avoid (Hard Prohibitions)
+1. Creating public tables without ENABLE ROW LEVEL SECURITY
+2. Using unauthenticated or service_role credentials in client-side Supabase SDK calls
+3. Creating SECURITY DEFINER functions without setting search_path = public
+4. Missing foreign key indexes on high-cardinality tenant_id and user_id columns
+
+## Hard Invariants
+1. Every migration script creating a table must end with ALTER TABLE ... ENABLE ROW LEVEL SECURITY.
+2. All tenant queries must filter auth.uid() = user_id or match organization membership claims.
+3. SECURITY DEFINER functions must declare SET search_path = public, pg_temp to prevent schema hijacking.
+
+# Part 3: Master Instruction Prompt
+1. Mandatory RLS: Every public table must have RLS enabled with explicit SELECT, INSERT, UPDATE, DELETE policies.
+2. Tenant Isolation: Base policies on auth.uid() or jwt->'app_metadata'->>'tenant_id'.
+3. Index Optimization: Always index columns used in RLS policy filters to prevent sequential table scans.
+4. Auditable Functions: Mark helper triggers with SECURITY DEFINER and specify fixed search_path.
+
+# Part 4: Verified Implementation Standard vs Prohibited Anti-Pattern
+
+## Prohibited Anti-Pattern: Insecure table creation without RLS enabled
+```
+CREATE TABLE user_notes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid REFERENCES auth.users(id),
+  title text NOT NULL,
+  content text
+);
+-- VULNERABILITY: Table lacks RLS, exposing all user notes to public anon key!
+```
+
+## Verified Production Standard: Fully locked table with RLS and tenant index
+```
+CREATE TABLE user_notes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  title text NOT NULL,
+  content text,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- Enable RLS immediately
+ALTER TABLE user_notes ENABLE ROW LEVEL SECURITY;
+
+-- Scoped policy
+CREATE POLICY "Users can manage own notes"
+ON user_notes FOR ALL
+TO authenticated
+USING (auth.uid() = user_id)
+WITH CHECK (auth.uid() = user_id);
+
+-- Prevent full table scan on policy evaluation
+CREATE INDEX idx_user_notes_user_id ON user_notes(user_id);
+```
+
+## Architectural Justification
+Enabling RLS with explicit auth.uid() checking guarantees that tenant records are never leaked across client queries.

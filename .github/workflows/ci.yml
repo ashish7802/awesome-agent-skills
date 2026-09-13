@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-validate:
+    name: Build & Validate Skills
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate and synchronize rule files
+        run: npm run generate:rules
+
+      - name: Verify rule files are committed and in sync
+        run: |
+          git status --porcelain
+          test -z "$(git status --porcelain)" || (echo "Rule files are out of sync! Run npm run generate:rules" && exit 1)
+
+      - name: Build production applet
+        run: npm run build

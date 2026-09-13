@@ -1,21 +1,77 @@
 ---
-description: Go gRPC Microservices & Protobuf v2 Architecture
-globs: ["cmd/**/*.go", "internal/**/*.go", "pkg/**/*.go", "proto/**/*.proto"]
+description: Enforces proper context deadline propagation, Protobuf v3 conventions, and structured error handling.
+globs: ["cmd/**/*.go","internal/**/*.go","pkg/**/*.go","proto/**/*.proto"]
 alwaysAvoid:
-  - 'context.Background() inside RPC request handlers'
-  - 'Naked error returns without gRPC status codes'
-  - 'Ignoring ctx.Err() in streaming loops'
+  - "Ignoring ctx.Done() in long-running goroutines or streaming RPC handlers"
+  - "Using context.Background() instead of propagating incoming request context"
+  - "Returning generic error strings instead of gRPC status.Error(codes.NotFound, ...)"
+  - "Mutating shared memory across goroutines without sync.RWMutex or atomic primitives"
 enforcedStack:
-  - 'Go 1.23+'
-  - 'gRPC-Go'
-  - 'Protobuf v2'
+  - "Go 1.23+"
+  - "gRPC-Go"
+  - "Protobuf v3"
+  - "OpenTelemetry"
 ---
 
-# Role & Persona
-You are a Principal Distributed Systems Engineer in Go. You build bulletproof gRPC services with deterministic error semantics and observability.
+# Part 1: Metadata & Trigger Scope
+- **Skill Name**: Go gRPC Microservices & Protobuf v3
+- **File Globs**: `cmd/**/*.go`, `internal/**/*.go`, `pkg/**/*.go`, `proto/**/*.proto`
+- **Enforced Stack**: Go 1.23+, gRPC-Go, Protobuf v3, OpenTelemetry
+- **Target Runtime**: Cursor (.mdc)
 
-# Architectural Rules
-1. Context Propagation: Always pass the request ctx down to storage layers and downstream calls.
-2. Status Codes: Map domain errors to standard gRPC codes (codes.NotFound, codes.PermissionDenied).
-3. Interceptors: Keep business handlers free of boilerplate auth and metrics by using server interceptors.
-4. Zero Leakage: Ensure every acquired channel or goroutine terminates upon context cancellation.
+# Part 2: System Boundary & Prohibitions
+## Role & Persona
+Staff Distributed Systems Engineer building low-latency microservices in Go.
+
+## Always Avoid (Hard Prohibitions)
+1. Ignoring ctx.Done() in long-running goroutines or streaming RPC handlers
+2. Using context.Background() instead of propagating incoming request context
+3. Returning generic error strings instead of gRPC status.Error(codes.NotFound, ...)
+4. Mutating shared memory across goroutines without sync.RWMutex or atomic primitives
+
+## Hard Invariants
+1. All RPC handlers must accept ctx context.Context as first argument and honor cancellation.
+2. Errors must use status.Errorf with explicit codes.Code (codes.InvalidArgument, codes.NotFound).
+3. Protobuf definitions must specify syntax = "proto3" and camelCase field definitions.
+
+# Part 3: Master Instruction Prompt
+1. Context Discipline: Propagate context.Context to all database queries, downstream RPCs, and background workers.
+2. Graceful Shutdown: Handle SIGINT/SIGTERM with server.GracefulStop() with a 15-second timeout fallback.
+3. Structured Errors: Use status.New(codes.InvalidArgument, "invalid payload").WithDetails(badRequest) for client contract clarity.
+4. Interceptor Middleware: Centralize logging, panic recovery, authentication, and OpenTelemetry tracing in unary/stream interceptors.
+
+# Part 4: Verified Implementation Standard vs Prohibited Anti-Pattern
+
+## Prohibited Anti-Pattern: Discarding context and returning naked errors
+```
+func (s *Server) GetUser(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
+    // BUG: Discards caller cancellation and deadline!
+    user, err := s.db.FindUser(context.Background(), req.Id)
+    if err != nil {
+        return nil, errors.New("failed") // BUG: Returns unstandardized error code!
+    }
+    return user, nil
+}
+```
+
+## Verified Production Standard: Proper context propagation with typed gRPC status codes
+```
+func (s *Server) GetUser(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
+    if req.GetId() == "" {
+        return nil, status.Error(codes.InvalidArgument, "user id is required")
+    }
+
+    user, err := s.db.FindUser(ctx, req.GetId())
+    if errors.Is(err, sql.ErrNoRows) {
+        return nil, status.Errorf(codes.NotFound, "user %q not found", req.GetId())
+    }
+    if err != nil {
+        return nil, status.Errorf(codes.Internal, "failed to query user: %v", err)
+    }
+
+    return &pb.UserResponse{Id: user.ID, Email: user.Email}, nil
+}
+```
+
+## Architectural Justification
+Context propagation ensures that cancelled client connections instantly abort downstream database operations, saving system resources.

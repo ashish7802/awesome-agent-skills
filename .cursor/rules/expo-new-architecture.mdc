@@ -1,18 +1,72 @@
 ---
-description: React Native Expo SDK 52 & New Architecture Standard
-globs: ["app/**/*.{tsx,ts}", "app.json"]
+description: Enforces Bridgeless mode, TurboModules, Expo Router typed navigation, and 60fps gesture worklets.
+globs: ["app/**/*.{tsx,ts}","plugins/**/*.js","app.json"]
 alwaysAvoid:
-  - 'Legacy bridge modules incompatible with Fabric'
-  - 'Animations running on the JavaScript thread'
+  - "Using deprecated legacy React Native modules incompatible with Bridgeless mode or Fabric"
+  - "Executing heavy computational loops on the React Native JS thread during active animations"
+  - "Hardcoded absolute screen widths (Dimensions.get(\"window\").width) instead of flexbox and safe area insets"
 enforcedStack:
-  - 'Expo SDK 52'
-  - 'React Native 0.76+'
-  - 'Reanimated 3'
+  - "React Native 0.76+"
+  - "Expo SDK 52"
+  - "TurboModules"
+  - "Fabric Renderer"
 ---
 
-# Role & Persona
-You are a Principal Mobile Architect. You write high-performance native mobile apps on Expo 52 with the New Architecture.
+# Part 1: Metadata & Trigger Scope
+- **Skill Name**: React Native Expo 52 & New Architecture
+- **File Globs**: `app/**/*.{tsx,ts}`, `plugins/**/*.js`, `app.json`
+- **Enforced Stack**: React Native 0.76+, Expo SDK 52, TurboModules, Fabric Renderer
+- **Target Runtime**: Cursor (.mdc)
 
-# Architectural Rules
-1. Worklet Execution: Animations and gestures must execute on the native UI thread using Reanimated 3.
-2. Inset Safety: Always adapt views to hardware notches using react-native-safe-area-context.
+# Part 2: System Boundary & Prohibitions
+## Role & Persona
+Principal Mobile Engineer specializing in React Native and Expo New Architecture.
+
+## Always Avoid (Hard Prohibitions)
+1. Using deprecated legacy React Native modules incompatible with Bridgeless mode or Fabric
+2. Executing heavy computational loops on the React Native JS thread during active animations
+3. Hardcoded absolute screen widths (Dimensions.get("window").width) instead of flexbox and safe area insets
+
+## Hard Invariants
+1. All layouts must respect useSafeAreaInsets() for notch and dynamic island padding.
+2. Complex gesture animations must run entirely on the UI thread via react-native-reanimated worklets.
+3. Navigation must use Expo Router file-based routing with typed Href parameters.
+
+# Part 3: Master Instruction Prompt
+1. New Architecture Compliance: Build for Bridgeless mode with Fabric renderer enabled in app.json.
+2. UI Thread Animations: Always use useAnimatedStyle and withSpring from Reanimated to prevent JS frame drops.
+3. Safe Area Padding: Wrap screen roots in SafeAreaView or apply insets.top and insets.bottom padding.
+
+# Part 4: Verified Implementation Standard vs Prohibited Anti-Pattern
+
+## Prohibited Anti-Pattern: JS-thread animation and hardcoded screen coordinates
+```
+// BAD: Runs on JS thread and ignores dynamic island/notches
+const width = Dimensions.get('window').width;
+const animatedVal = new Animated.Value(0);
+Animated.timing(animatedVal, { toValue: 1, useNativeDriver: false }).start();
+```
+
+## Verified Production Standard: 60fps UI worklet with Safe Area Insets
+```
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
+
+export function Card() {
+  const insets = useSafeAreaInsets();
+  const offset = useSharedValue(0);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: withSpring(offset.value) }]
+  }));
+
+  return (
+    <Animated.View style={[{ paddingTop: insets.top }, animatedStyle]}>
+      {/* Smooth 60fps native performance */}
+    </Animated.View>
+  );
+}
+```
+
+## Architectural Justification
+Worklets execute directly on the mobile OS display thread, ensuring butter-smooth 60-120fps animations.

@@ -277,7 +277,7 @@ You are a Principal Database Administrator and Application Security Engineer. Yo
     breakdown: {
       metadata: {
         title: 'Deterministic AI Agent Orchestration & Tool Calling Standard',
-        description: 'Guarantees reliable LLM function calling, finite agentic loops, and typed output schema contracts.',
+        description: 'Enforces reliable LLM function calling, finite agentic loops, and typed output schema contracts.',
         globs: ['agents/**/*.py', 'tools/**/*.py', 'prompts/**/*.md'],
         enforcedStack: ['Claude 3.7 Sonnet', 'Instructor', 'Pydantic AI', 'Python 3.12+'],
         agent: 'claude',
@@ -309,20 +309,33 @@ You are a Principal Database Administrator and Application Security Engineer. Yo
     tool_call = parse_raw_text(response.text) # Fragile regex parsing!
     execute(tool_call)`,
         goodPracticeTitle: 'Deterministic loop with Pydantic tool call and iteration circuit breaker',
-        goodPracticeSnippet: `MAX_ITERATIONS = 5
+        goodPracticeSnippet: `import instructor
+from anthropic import AsyncAnthropic
+from pydantic import BaseModel, Field
+
+client = instructor.from_anthropic(AsyncAnthropic())
+
+class AgentDecision(BaseModel):
+    action: str = Field(description="Action verb: TOOL_CALL or TERMINATE")
+    tool_name: str | None = None
+    tool_args: dict | None = None
+    final_payload: dict | None = None
+
+MAX_ITERATIONS = 5
 for step in range(MAX_ITERATIONS):
-    decision: AgentDecision = client.chat.completions.create(
-        model="claude-3-7-sonnet",
+    decision: AgentDecision = await client.messages.create(
+        model="claude-3-7-sonnet-20250219",
+        max_tokens=1024,
         response_model=AgentDecision,
         messages=messages,
     )
-    if decision.action == AgentAction.TERMINATE:
+    if decision.action == "TERMINATE":
         return decision.final_payload
 
     result = await execute_tool(decision.tool_name, decision.tool_args)
-    messages.append({"role": "tool", "content": result.model_dump_json()})
+    messages.append({"role": "user", "content": f"Tool result: {result.model_dump_json()}"})
 else:
-    raise AgentLoopExhaustedError("Exceeded max step budget of 5 iterations")`,
+    raise RuntimeError("Exceeded max step budget of 5 iterations")`,
         explanation: 'The good practice guarantees type validation at every hop, bounds execution cost, and terminates gracefully upon limits.',
       },
     },
@@ -352,20 +365,20 @@ You are a Principal AI Agent Systems Architect. You design deterministic, reliab
   // 5. Backend & APIs - Go gRPC Microservices
   {
     id: 'golang-grpc-microservices',
-    name: 'Go gRPC Microservices & Protobuf v2',
+    name: 'Go gRPC Microservices & Protobuf v3',
     targetPath: '.cursor/rules/golang-grpc-microservices.mdc',
     agent: 'cursor',
     category: 'Backend & APIs',
-    stack: ['Go 1.23+', 'gRPC-Go', 'Protobuf v2', 'OpenTelemetry'],
+    stack: ['Go 1.23+', 'gRPC-Go', 'Protobuf v3', 'OpenTelemetry'],
     description: 'Strict context propagation, cancellation handling, protoc code generation, and interceptor telemetry.',
     addedDate: '2025-01-20',
     globs: ['cmd/**/*.go', 'internal/**/*.go', 'pkg/**/*.go', 'proto/**/*.proto'],
     breakdown: {
       metadata: {
         title: 'Go gRPC High-Performance Microservices Architecture',
-        description: 'Enforces proper context deadline propagation, Protobuf v2 conventions, and structured error handling.',
+        description: 'Enforces proper context deadline propagation, Protobuf v3 conventions, and structured error handling.',
         globs: ['cmd/**/*.go', 'internal/**/*.go', 'pkg/**/*.go', 'proto/**/*.proto'],
-        enforcedStack: ['Go 1.23+', 'gRPC-Go 1.68+', 'Protobuf v2', 'OpenTelemetry Go'],
+        enforcedStack: ['Go 1.23+', 'gRPC-Go 1.68+', 'Protobuf v3 ("proto3")', 'OpenTelemetry Go'],
         agent: 'cursor',
       },
       systemBoundary: {
@@ -530,7 +543,7 @@ You are a Principal Design Technologist. You write clean, scalable, accessible m
         title: 'Rust WebAssembly High-Performance & Memory Optimization Standard',
         description: 'Enforces zero-copy JS/WASM buffer sharing, allocator tuning, and SIMD vector operations.',
         globs: ['crates/**/*.rs', 'wasm/**/*.rs', 'src/wasm/**/*.ts'],
-        enforcedStack: ['Rust 1.83+', 'wasm-bindgen 0.2+', 'wasm-opt', 'wee_alloc / default allocator'],
+        enforcedStack: ['Rust 1.83+', 'wasm-bindgen 0.2+', 'wasm-opt', 'dlmalloc (default WebAssembly allocator)'],
         agent: 'cursor',
       },
       systemBoundary: {
@@ -612,13 +625,13 @@ You are a Staff Systems & WebAssembly Engineer. You maximize compute efficiency,
     agent: 'cursor',
     category: 'Cloud & DevOps',
     stack: ['Cloudflare Workers', 'Hono v4.6+', 'TypeScript', 'Workers KV & D1'],
-    description: 'Sub-10ms global edge routing, typed env bindings, streaming responses, and Durable Object state.',
+    description: 'Global edge routing, typed env bindings, streaming responses, and Cloudflare D1/KV storage.',
     addedDate: '2025-01-28',
     globs: ['src/**/*.ts', 'wrangler.toml', 'wrangler.jsonc'],
     breakdown: {
       metadata: {
         title: 'Cloudflare Workers Edge Architecture & Hono v4 Standard',
-        description: 'Enforces ultra-low latency edge compute conventions, typed bindings, and edge caching.',
+        description: 'Enforces edge compute conventions, typed bindings, and edge caching.',
         globs: ['src/**/*.ts', 'wrangler.toml'],
         enforcedStack: ['Cloudflare Workers', 'Hono v4.6+', 'TypeScript', 'Cloudflare D1 / KV'],
         agent: 'cursor',
@@ -677,7 +690,7 @@ app.get('/data', async (c) => {
 
   return response;
 });`,
-        explanation: 'Using Cloudflare Edge Cache and waitUntil ensures sub-10ms response times without incurring repeated database read costs.',
+        explanation: 'Using Cloudflare Edge Cache and waitUntil minimizes origin database round-trips and leverages edge caching directly.',
       },
     },
     mdcOrSkillContent: `---
@@ -694,7 +707,7 @@ enforcedStack:
 ---
 
 # Role & Persona
-You are a Principal Edge Architect. You write lightning-fast, ultra-low latency edge microservices on Cloudflare Workers and Hono.
+You are a Principal Edge Systems Architect. You write type-safe, resilient edge microservices on Cloudflare Workers and Hono.
 
 # Architectural Rules
 1. Type Safety: Always instantiate Hono with new Hono<{ Bindings: Env }>() specifying all KV, D1, and Secret bindings.
