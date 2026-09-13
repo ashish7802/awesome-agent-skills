@@ -1,0 +1,120 @@
+name: Propose a New Agent Skill
+description: Submit a production-grade AI agent rule file (.mdc for Cursor, SKILL.md for Claude Code, or Copilot instruction)
+title: "[Skill Proposal]: "
+labels: ["skill-submission", "needs-review"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for contributing to **awesome-agent-skills**!
+        Please fill out this form to submit your skill. All submissions must follow the **4-part architecture**:
+        1. Metadata (globs, stack, purpose)
+        2. System Boundary (role, hard invariants, strict prohibitions)
+        3. Master Instruction Prompt
+        4. Before / After Usage Example (anti-pattern vs production standard)
+
+  - type: input
+    id: skill_name
+    attributes:
+      label: Skill Name
+      description: Clear, human-readable name of the skill (e.g., 'Next.js 15 App Router & Server Actions')
+      placeholder: e.g. Tailwind v4 Modern Styling
+    validations:
+      required: true
+
+  - type: dropdown
+    id: agent_target
+    attributes:
+      label: Target Agent Runtime
+      description: Select the primary AI agent runtime this skill targets.
+      options:
+        - Cursor (.cursor/rules/*.mdc)
+        - Claude Code (.claude/skills/*/SKILL.md)
+        - GitHub Copilot (.github/copilot-instructions/*.md)
+        - Multi-Agent Compatible
+    validations:
+      required: true
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Skill Category
+      description: Select which of the 10 official categories this skill belongs to.
+      options:
+        - Full-Stack & SSR
+        - Backend & Microservices
+        - Database & Storage
+        - AI & Agent Orchestration
+        - Systems & Performance
+        - Frontend & UI
+        - Cloud & DevOps
+        - Testing & QA
+        - Mobile & Cross-Platform
+        - Security & Compliance
+    validations:
+      required: true
+
+  - type: input
+    id: target_path
+    attributes:
+      label: Target Path in User Repository
+      description: The exact repository path where this rule will be installed.
+      placeholder: e.g. .cursor/rules/nextjs-15-approuter.mdc
+    validations:
+      required: true
+
+  - type: input
+    id: stack_tags
+    attributes:
+      label: Enforced Technology Stack
+      description: Comma-separated list of frameworks, versions, and libraries.
+      placeholder: e.g. Next.js 15, React 19, Server Actions, TypeScript 5.6
+    validations:
+      required: true
+
+  - type: textarea
+    id: raw_content
+    attributes:
+      label: Raw Skill File Content (.mdc / SKILL.md / .md)
+      description: Paste the complete, production-ready rule content including any frontmatter.
+      placeholder: |
+        ---
+        description: Enforces Next.js 15 App Router conventions...
+        globs: app/**/*.tsx, app/**/*.ts
+        ---
+        # Next.js 15 App Router Master Rule
+        ...
+      render: markdown
+    validations:
+      required: true
+
+  - type: textarea
+    id: before_after_example
+    attributes:
+      label: Before / After Usage Example
+      description: Provide an anti-pattern (hallucination/outdated pattern) and the corrected production standard.
+      placeholder: |
+        ### Anti-Pattern (Outdated / Hallucination):
+        ```ts
+        // e.g. mixing client state with server component
+        ```
+
+        ### Production Standard:
+        ```ts
+        // e.g. clean server action with safe boundary
+        ```
+      render: markdown
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Author Checklist
+      options:
+        - label: I have verified this skill adheres to the 4-part architecture (Metadata, Boundary, Master Prompt, Examples).
+          required: true
+        - label: I have audited this skill against hallucinated parameters, outdated APIs, and missing boundaries.
+          required: true
+        - label: I agree to license this submission under the MIT License.
+          required: true

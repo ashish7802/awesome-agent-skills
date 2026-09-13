@@ -35,22 +35,70 @@ export interface AuditReport {
 }
 
 export type SkillCategory =
-  | 'Frontend & Web'
-  | 'Backend & APIs'
   | 'Fullstack & SaaS'
-  | 'AI & LLM Orchestration'
-  | 'Systems & DevOps'
-  | 'Database & Security';
+  | 'Backend & APIs'
+  | 'Database & Storage'
+  | 'Systems & Low-Level'
+  | 'Frontend & UI'
+  | 'AI & LLMs'
+  | 'Cloud & DevOps'
+  | 'Testing & QA'
+  | 'Mobile'
+  | 'Security & Hardening';
 
+export type AgentType = 'cursor' | 'claude' | 'copilot';
+
+export interface UsageExample {
+  badPracticeTitle: string;
+  badPracticeSnippet: string;
+  goodPracticeTitle: string;
+  goodPracticeSnippet: string;
+  explanation: string;
+}
+
+export interface SkillArchitectureBreakdown {
+  metadata: {
+    title: string;
+    description: string;
+    globs?: string[];
+    enforcedStack: string[];
+    agent: AgentType;
+  };
+  systemBoundary: {
+    role: string;
+    alwaysAvoid: string[];
+    hardInvariants: string[];
+  };
+  masterPrompt: string;
+  usageExamples: UsageExample;
+}
+
+export interface Skill {
+  id: string;
+  name: string;
+  targetPath: string;
+  agent: AgentType;
+  stack: string[];
+  category: SkillCategory;
+  description: string;
+  mdcOrSkillContent: string;
+  addedDate: string;
+  globs?: string[];
+  breakdown?: SkillArchitectureBreakdown;
+}
+
+// Backward compatibility alias for RepoSkill
 export interface RepoSkill {
   id: string;
   title: string;
   description: string;
-  category: SkillCategory;
+  category: SkillCategory | string;
   fileName: string;
   targetPath: string;
   globs: string[];
   enforcedStack: string[];
   prohibitedPatterns: string[];
   rawContent: string;
+  agent?: AgentType;
 }
+

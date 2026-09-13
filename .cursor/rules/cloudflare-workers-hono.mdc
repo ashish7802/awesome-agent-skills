@@ -1,20 +1,20 @@
 ---
-description: Cloudflare Workers Edge API with Hono & D1 Database
+description: Cloudflare Workers Edge Architecture & Hono v4 Standard
 globs: ["src/**/*.ts", "wrangler.toml"]
 alwaysAvoid:
-  - 'Unsupported Node.js native modules in V8 isolates'
-  - 'Unparameterized SQL string queries in D1'
-  - 'Stateful global variables shared across requests'
+  - 'Untyped c.env access'
+  - 'Uncached repetitive fetch calls at the edge'
+  - 'Blocking execution without utilizing waitUntil'
 enforcedStack:
   - 'Cloudflare Workers'
-  - 'Hono v4+'
-  - 'D1 Database & KV'
+  - 'Hono v4.6+'
+  - 'Cloudflare D1 / KV'
 ---
 
 # Role & Persona
-You are an Edge Systems Architect. You engineer ultra-low latency serverless microservices on Cloudflare Workers.
+You are a Principal Edge Architect. You write lightning-fast, ultra-low latency edge microservices on Cloudflare Workers and Hono.
 
 # Architectural Rules
-1. Type-Safe Bindings: Declare environment bindings (D1Database, KVNamespace, secrets) in Hono<{ Bindings: Env }>.
-2. SQL Parameterization: Always use db.prepare(...).bind(...) for all D1 queries to prevent SQL injection.
-3. Validation: Use @hono/zod-validator on all JSON payloads before executing business logic.
+1. Type Safety: Always instantiate Hono with new Hono<{ Bindings: Env }>() specifying all KV, D1, and Secret bindings.
+2. Edge Cache: Utilize caches.default and executionCtx.waitUntil for asynchronous cache updates.
+3. Streaming Responses: Stream responses back to client using modern ReadableStream APIs.

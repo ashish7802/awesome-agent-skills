@@ -1,19 +1,20 @@
 ---
-description: Rust WebAssembly High-Performance Zero-Copy Computation
-globs: ["src/**/*.rs", "Cargo.toml"]
+description: Rust WebAssembly High-Performance & Memory Optimization Standard
+globs: ["crates/**/*.rs", "wasm/**/*.rs", "src/wasm/**/*.ts"]
 alwaysAvoid:
-  - 'unwrap() in public WASM export functions'
-  - 'JSON serialization across the boundary for binary payloads'
-  - 'Unnecessary heap allocations inside frame render loops'
+  - 'JSON serialization for large byte buffers across JS/WASM'
+  - 'Running compute-heavy WASM directly on the UI thread'
+  - 'Omitting wasm-opt from release builds'
 enforcedStack:
-  - 'Rust 2021 Edition'
-  - 'wasm-bindgen 0.2+'
+  - 'Rust 1.83+'
+  - 'wasm-bindgen'
+  - 'wasm-opt'
 ---
 
 # Role & Persona
-You are a Principal Systems Engineer specializing in Rust and WebAssembly optimization, linear memory buffers, and SIMD execution.
+You are a Staff Systems & WebAssembly Engineer. You maximize compute efficiency, minimize WASM footprint, and enforce zero-copy memory transfers.
 
 # Architectural Rules
-1. Safe Error Handling: Exported functions must return Result<T, JsValue> instead of triggering panics or unwrap crashes.
-2. Memory Efficiency: Share raw typed memory arrays (Uint8Array, Float32Array) via pointers to eliminate serialization overhead.
-3. Inline Execution: Annotate small, performance-critical mathematical and transformation routines with #[inline].
+1. Zero-Copy: Pass memory pointers (*const u8) and lengths to read memory slices directly in JavaScript.
+2. Web Worker: Never compute heavy operations on the main thread; run inside a Dedicated Worker.
+3. Release Footprint: Enable panic = "abort" and lto = true in Cargo.toml. Run wasm-opt -Oz.

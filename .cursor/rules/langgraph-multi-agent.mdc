@@ -1,0 +1,17 @@
+---
+description: LangGraph Multi-Agent StateGraph Architecture Standard
+globs: ["graphs/**/*.py", "nodes/**/*.py"]
+alwaysAvoid:
+  - 'In-place state dictionary mutations'
+  - 'Infinite circular graph routing without step limits'
+enforcedStack:
+  - 'LangGraph 0.2+'
+  - 'Python 3.12+'
+---
+
+# Role & Persona
+You are a Principal AI Agent Architect. You design multi-agent cyclic graph workflows with LangGraph.
+
+# Architectural Rules
+1. Typed Reducers: Always use Annotated reducers (such as add_messages) in your AgentState.
+2. Human-in-the-loop: Set interrupt_before on sensitive action nodes.

@@ -2,11 +2,11 @@ import React, { useState } from 'react';
 import { Header } from './components/Header';
 import { AuditorView } from './components/AuditorView';
 import { BrowseSkillsView } from './components/BrowseSkillsView';
-import { REPO_SKILLS } from './data/skillsData';
-import { AuditReport } from './types';
+import { SKILLS } from './data/skills';
+import { AuditReport, Skill } from './types';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'auditor' | 'browse'>('auditor');
+  const [activeTab, setActiveTab] = useState<'browse' | 'auditor'>('browse');
   const [content, setContent] = useState<string>('');
   const [fileName, setFileName] = useState<string>('custom-rule.mdc');
   const [report, setReport] = useState<AuditReport | null>(null);
@@ -62,22 +62,27 @@ export default function App() {
     setFileName(skillFileName);
     setReport(null);
     setActiveTab('auditor');
-    // Trigger audit automatically
+    // Run audit automatically
     handleRunAudit(skillContent, skillFileName);
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-sky-500/30 selection:text-sky-200">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans selection:bg-sky-500/30 selection:text-sky-300 transition-colors">
       {/* Navigation Header */}
       <Header
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        repoSkillCount={REPO_SKILLS.length}
+        repoSkillCount={SKILLS.length}
       />
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        {activeTab === 'auditor' ? (
+        {activeTab === 'browse' ? (
+          <BrowseSkillsView
+            skills={SKILLS}
+            onSelectForAudit={handleSelectSkillForAudit}
+          />
+        ) : (
           <AuditorView
             content={content}
             setContent={setContent}
@@ -89,19 +94,32 @@ export default function App() {
             onRunAudit={handleRunAudit}
             error={error}
           />
-        ) : (
-          <BrowseSkillsView
-            skills={REPO_SKILLS}
-            onSelectForAudit={handleSelectSkillForAudit}
-          />
         )}
       </main>
 
-      {/* Clean Minimalist Footer */}
-      <footer className="border-t border-slate-900 bg-slate-950/80 py-5 text-center text-xs text-slate-500 font-mono">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span>Skill Auditor • Zero-Fluff Production Rules Verification</span>
-          <span>Computed against {REPO_SKILLS.length} local skill specifications</span>
+      {/* Minimalist Accessible Footer */}
+      <footer className="border-t border-slate-200 dark:border-slate-900 bg-white/60 dark:bg-slate-950/80 py-6 text-center text-xs text-slate-500 font-mono transition-colors">
+        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-slate-700 dark:text-slate-300">
+              Awesome Agent Skills
+            </span>
+            <span>•</span>
+            <span>4-Part Architecture for Cursor, Claude Code, and Copilot</span>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <span>{SKILLS.length} Production Rule Files</span>
+            <span>•</span>
+            <a
+              href="https://github.com/ashish7802/awesome-agent-skills"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sky-600 dark:text-sky-400 hover:underline"
+            >
+              GitHub Repository
+            </a>
+          </div>
         </div>
       </footer>
     </div>
