@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { Header } from './components/Header';
 import { AuditorView } from './components/AuditorView';
 import { BrowseSkillsView } from './components/BrowseSkillsView';
+import { AuditHistoryTracker } from './components/AuditHistoryTracker';
 import { SKILLS } from './data/skills';
-import { AuditReport, Skill } from './types';
+import { AuditReport, AuditHistoryItem } from './types';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'browse' | 'auditor'>('browse');
@@ -12,6 +13,23 @@ export default function App() {
   const [report, setReport] = useState<AuditReport | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Local state tracker keeping a history of the last 5 audit reports
+  const [history, setHistory] = useState<AuditHistoryItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('skill_audit_history');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.slice(0, 5);
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to read audit history:', e);
+    }
+    return [];
+  });
+  const [activeHistoryId, setActiveHistoryId] = useState<string | null>(null);
 
   const handleRunAudit = async (overrideContent?: string, overrideFileName?: string) => {
     const textToAudit = overrideContent ?? content;
@@ -45,6 +63,29 @@ export default function App() {
 
       if (data.report) {
         setReport(data.report);
+
+        // Add to history (bounded to last 5 reports)
+        const newHistoryItem: AuditHistoryItem = {
+          id: `audit-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+          timestamp: data.report.timestamp || new Date().toISOString(),
+          fileName: data.report.file_name || fileToAudit,
+          overallScore: data.report.overall_score,
+          charCount: data.report.char_count || textToAudit.length,
+          report: data.report,
+          content: textToAudit,
+        };
+
+        setHistory((prev) => {
+          const filtered = prev.filter((item) => item.id !== newHistoryItem.id);
+          const updated = [newHistoryItem, ...filtered].slice(0, 5);
+          try {
+            localStorage.setItem('skill_audit_history', JSON.stringify(updated));
+          } catch (err) {
+            console.warn('Failed to persist audit history:', err);
+          }
+          return updated;
+        });
+        setActiveHistoryId(newHistoryItem.id);
       } else {
         throw new Error('No audit report returned from server');
       }
@@ -61,9 +102,30 @@ export default function App() {
     setContent(skillContent);
     setFileName(skillFileName);
     setReport(null);
+    setActiveHistoryId(null);
     setActiveTab('auditor');
     // Run audit automatically
     handleRunAudit(skillContent, skillFileName);
+  };
+
+  // Switch back to a previous audit report without re-running the audit
+  const handleSelectHistoryItem = (item: AuditHistoryItem) => {
+    setContent(item.content);
+    setFileName(item.fileName);
+    setReport(item.report);
+    setActiveHistoryId(item.id);
+    setError(null);
+    setActiveTab('auditor');
+  };
+
+  const handleClearHistory = () => {
+    setHistory([]);
+    setActiveHistoryId(null);
+    try {
+      localStorage.removeItem('skill_audit_history');
+    } catch (err) {
+      console.warn('Failed to clear audit history:', err);
+    }
   };
 
   return (
@@ -77,6 +139,16 @@ export default function App() {
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        {/* Local State Audit History Tracker (Last 5 Reports) */}
+        {history.length > 0 && (
+          <AuditHistoryTracker
+            history={history}
+            activeHistoryId={activeHistoryId}
+            onSelectHistoryItem={handleSelectHistoryItem}
+            onClearHistory={handleClearHistory}
+          />
+        )}
+
         {activeTab === 'browse' ? (
           <BrowseSkillsView
             skills={SKILLS}
@@ -93,6 +165,10 @@ export default function App() {
             isLoading={isLoading}
             onRunAudit={handleRunAudit}
             error={error}
+            history={history}
+            activeHistoryId={activeHistoryId}
+            onSelectHistoryItem={handleSelectHistoryItem}
+            onClearHistory={handleClearHistory}
           />
         )}
       </main>

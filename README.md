@@ -112,6 +112,22 @@ We welcome new production-grade skills! All submissions must use the 4-part arch
 
 ---
 
+## 🚀 Deploy to Vercel
+
+This repository is pre-configured for 1-click deployment on **Vercel** with full-stack support via Vercel Serverless Functions (`/api/audit` and `/api/health`):
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fashish7802%2Fawesome-agent-skills&env=GEMINI_API_KEY&envDescription=Gemini%20API%20Key%20for%20AI-powered%20rule%20auditing)
+
+### Manual Vercel Deployment
+
+1. **Import the repository** into your Vercel dashboard.
+2. Vercel automatically detects the **Vite** framework from `vercel.json`.
+3. In **Environment Variables**, add:
+   - `GEMINI_API_KEY`: *(Optional)* Your Gemini API key for AI-powered multi-dimensional auditing. If omitted, the deterministic fallback engine validates rules instantly.
+4. Click **Deploy**. The Vite single-page application is served via high-speed Edge CDN, and the `/api` endpoints are automatically provisioned as serverless functions.
+
+---
+
 ## 🛠 Local Development
 
 ```bash

@@ -34,6 +34,10 @@ interface AuditorViewProps {
   isLoading: boolean;
   onRunAudit: (overrideContent?: string, overrideFileName?: string) => Promise<void>;
   error: string | null;
+  history?: AuditHistoryItem[];
+  activeHistoryId?: string | null;
+  onSelectHistoryItem?: (item: AuditHistoryItem) => void;
+  onClearHistory?: () => void;
 }
 
 export const AuditorView: React.FC<AuditorViewProps> = ({
@@ -46,27 +50,32 @@ export const AuditorView: React.FC<AuditorViewProps> = ({
   isLoading,
   onRunAudit,
   error,
+  history: propHistory,
+  activeHistoryId,
+  onSelectHistoryItem,
+  onClearHistory: propOnClearHistory,
 }) => {
   const [dragOver, setDragOver] = useState(false);
   const [copiedReport, setCopiedReport] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Audit history tracking
-  const [history, setHistory] = useState<AuditHistoryItem[]>(() => {
+  // Fallback internal history if not passed from App.tsx
+  const [internalHistory, setInternalHistory] = useState<AuditHistoryItem[]>(() => {
     try {
       const saved = localStorage.getItem('skill_audit_history');
-      return saved ? JSON.parse(saved) : [];
+      return saved ? JSON.parse(saved).slice(0, 5) : [];
     } catch {
       return [];
     }
   });
   const [showHistory, setShowHistory] = useState(false);
 
-  // Sync new reports into audit history
+  const history = propHistory ?? internalHistory;
+
+  // Sync new reports into audit history only if using internal history
   useEffect(() => {
-    if (!report) return;
-    setHistory((prev) => {
-      // Check if top item is identical
+    if (!report || propHistory !== undefined) return;
+    setInternalHistory((prev) => {
       if (
         prev.length > 0 &&
         prev[0].fileName === (report.file_name || fileName) &&
@@ -83,7 +92,7 @@ export const AuditorView: React.FC<AuditorViewProps> = ({
         report,
         content,
       };
-      const updated = [newItem, ...prev.filter((h) => h.id !== newItem.id)].slice(0, 10);
+      const updated = [newItem, ...prev.filter((h) => h.id !== newItem.id)].slice(0, 5);
       try {
         localStorage.setItem('skill_audit_history', JSON.stringify(updated));
       } catch (err) {
@@ -91,21 +100,29 @@ export const AuditorView: React.FC<AuditorViewProps> = ({
       }
       return updated;
     });
-  }, [report, fileName, content]);
+  }, [report, fileName, content, propHistory]);
 
   const handleRestoreHistory = (item: AuditHistoryItem) => {
-    setContent(item.content);
-    setFileName(item.fileName);
-    setReport(item.report);
+    if (onSelectHistoryItem) {
+      onSelectHistoryItem(item);
+    } else {
+      setContent(item.content);
+      setFileName(item.fileName);
+      setReport(item.report);
+    }
     setShowHistory(false);
   };
 
   const handleClearHistory = () => {
-    setHistory([]);
-    try {
-      localStorage.removeItem('skill_audit_history');
-    } catch (err) {
-      console.warn('Failed to clear audit history:', err);
+    if (propOnClearHistory) {
+      propOnClearHistory();
+    } else {
+      setInternalHistory([]);
+      try {
+        localStorage.removeItem('skill_audit_history');
+      } catch (err) {
+        console.warn('Failed to clear audit history:', err);
+      }
     }
   };
 
@@ -334,11 +351,17 @@ ${report.rewritten_snippet}
                   ? 'text-amber-400 border-amber-500/30 bg-amber-950/40'
                   : 'text-rose-400 border-rose-500/30 bg-rose-950/40';
 
+                const isSelected = activeHistoryId === item.id;
+
                 return (
                   <div
                     key={item.id}
                     onClick={() => handleRestoreHistory(item)}
-                    className="group p-2.5 rounded-lg border border-slate-800 bg-slate-900/60 hover:bg-slate-800/60 hover:border-sky-500/40 transition-all cursor-pointer flex flex-col justify-between gap-2"
+                    className={`group p-2.5 rounded-lg border transition-all cursor-pointer flex flex-col justify-between gap-2 ${
+                      isSelected
+                        ? 'border-sky-500 bg-sky-950/40 ring-1 ring-sky-500/40'
+                        : 'border-slate-800 bg-slate-900/60 hover:bg-slate-800/60 hover:border-sky-500/40'
+                    }`}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-mono text-xs font-medium text-slate-200 truncate group-hover:text-sky-300 transition-colors">
