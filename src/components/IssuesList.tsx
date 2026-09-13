@@ -10,11 +10,41 @@ export const IssuesList: React.FC<IssuesListProps> = ({ issues }) => {
   const [selectedSeverity, setSelectedSeverity] = useState<string>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [copiedFindings, setCopiedFindings] = useState(false);
+  const [copiedFindingIdx, setCopiedFindingIdx] = useState<number | null>(null);
 
   const handleCopyFix = (text: string, index: number) => {
     navigator.clipboard.writeText(text);
     setCopiedIndex(index);
     setTimeout(() => setCopiedIndex(null), 2000);
+  };
+
+  const handleCopyFindings = () => {
+    const listToCopy = filteredIssues.length > 0 ? filteredIssues : issues;
+    if (listToCopy.length === 0) {
+      navigator.clipboard.writeText('No audit findings detected. Rule conforms to all production quality standards.');
+    } else {
+      const text = listToCopy
+        .map(
+          (issue, idx) =>
+            `${idx + 1}. [${issue.severity.toUpperCase()}] ${issue.title} (${getCategoryLabel(issue.category)})\n` +
+            `   - Explanation: ${issue.explanation}\n` +
+            `   - Actionable Fix: ${issue.fix_suggestion}`
+        )
+        .join('\n\n');
+      navigator.clipboard.writeText(text);
+    }
+    setCopiedFindings(true);
+    setTimeout(() => setCopiedFindings(false), 2000);
+  };
+
+  const handleCopyFindingItem = (issue: AuditIssue, index: number) => {
+    const text = `[${issue.severity.toUpperCase()}] ${issue.title} (${getCategoryLabel(issue.category)})\n` +
+      `Explanation: ${issue.explanation}\n` +
+      `Actionable Fix: ${issue.fix_suggestion}`;
+    navigator.clipboard.writeText(text);
+    setCopiedFindingIdx(index);
+    setTimeout(() => setCopiedFindingIdx(null), 2000);
   };
 
   const criticalCount = issues.filter((i) => i.severity === 'critical').length;
@@ -85,50 +115,70 @@ export const IssuesList: React.FC<IssuesListProps> = ({ issues }) => {
           </p>
         </div>
 
-        {/* Filter Pills */}
-        <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
+        {/* Filter Pills and Copy Button */}
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
+            <button
+              onClick={() => setSelectedSeverity('all')}
+              className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                selectedSeverity === 'all'
+                  ? 'bg-slate-800 text-white font-semibold'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              All ({issues.length})
+            </button>
+            <button
+              onClick={() => setSelectedSeverity('critical')}
+              className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
+                selectedSeverity === 'critical'
+                  ? 'bg-rose-500/20 text-rose-300 font-semibold border border-rose-500/30'
+                  : 'text-rose-400/80 hover:text-rose-300'
+              }`}
+            >
+              <span>Critical</span>
+              <span className="font-mono text-[10px]">({criticalCount})</span>
+            </button>
+            <button
+              onClick={() => setSelectedSeverity('warning')}
+              className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
+                selectedSeverity === 'warning'
+                  ? 'bg-amber-500/20 text-amber-300 font-semibold border border-amber-500/30'
+                  : 'text-amber-400/80 hover:text-amber-300'
+              }`}
+            >
+              <span>Warning</span>
+              <span className="font-mono text-[10px]">({warningCount})</span>
+            </button>
+            <button
+              onClick={() => setSelectedSeverity('nit')}
+              className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
+                selectedSeverity === 'nit'
+                  ? 'bg-sky-500/20 text-sky-300 font-semibold border border-sky-500/30'
+                  : 'text-sky-400/80 hover:text-sky-300'
+              }`}
+            >
+              <span>Nit</span>
+              <span className="font-mono text-[10px]">({nitCount})</span>
+            </button>
+          </div>
+
           <button
-            onClick={() => setSelectedSeverity('all')}
-            className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
-              selectedSeverity === 'all'
-                ? 'bg-slate-800 text-white font-semibold'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
+            onClick={handleCopyFindings}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-slate-200 border border-slate-800 hover:border-slate-700 text-xs font-medium transition-colors cursor-pointer shrink-0 shadow-xs"
+            title="Copy audit findings to clipboard"
           >
-            All ({issues.length})
-          </button>
-          <button
-            onClick={() => setSelectedSeverity('critical')}
-            className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
-              selectedSeverity === 'critical'
-                ? 'bg-rose-500/20 text-rose-300 font-semibold border border-rose-500/30'
-                : 'text-rose-400/80 hover:text-rose-300'
-            }`}
-          >
-            <span>Critical</span>
-            <span className="font-mono text-[10px]">({criticalCount})</span>
-          </button>
-          <button
-            onClick={() => setSelectedSeverity('warning')}
-            className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
-              selectedSeverity === 'warning'
-                ? 'bg-amber-500/20 text-amber-300 font-semibold border border-amber-500/30'
-                : 'text-amber-400/80 hover:text-amber-300'
-            }`}
-          >
-            <span>Warning</span>
-            <span className="font-mono text-[10px]">({warningCount})</span>
-          </button>
-          <button
-            onClick={() => setSelectedSeverity('nit')}
-            className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
-              selectedSeverity === 'nit'
-                ? 'bg-sky-500/20 text-sky-300 font-semibold border border-sky-500/30'
-                : 'text-sky-400/80 hover:text-sky-300'
-            }`}
-          >
-            <span>Nit</span>
-            <span className="font-mono text-[10px]">({nitCount})</span>
+            {copiedFindings ? (
+              <>
+                <Check className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="text-emerald-300 font-semibold">Copied to Clipboard</span>
+              </>
+            ) : (
+              <>
+                <Copy className="w-3.5 h-3.5 text-sky-400" />
+                <span>Copy to Clipboard</span>
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -172,6 +222,24 @@ export const IssuesList: React.FC<IssuesListProps> = ({ issues }) => {
                       {issue.title}
                     </span>
                   </div>
+
+                  <button
+                    onClick={() => handleCopyFindingItem(issue, idx)}
+                    className="flex items-center gap-1 text-[11px] text-slate-400 hover:text-slate-200 px-2 py-1 rounded bg-slate-900/70 border border-slate-800 hover:border-slate-700 transition-colors self-start sm:self-auto cursor-pointer"
+                    title="Copy finding details"
+                  >
+                    {copiedFindingIdx === idx ? (
+                      <>
+                        <Check className="w-3 h-3 text-emerald-400" />
+                        <span className="text-emerald-300 text-[10px]">Copied</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3 h-3 text-slate-400" />
+                        <span className="text-[10px]">Copy Finding</span>
+                      </>
+                    )}
+                  </button>
                 </div>
 
                 {/* Explanation */}

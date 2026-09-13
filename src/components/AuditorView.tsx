@@ -204,6 +204,52 @@ ${report.rewritten_snippet}
     });
   };
 
+  const handleCopyReport = () => {
+    if (!report) return;
+
+    const mdContent = `# Skill Audit Report: ${report.file_name || fileName}
+Generated: ${new Date().toISOString()}
+Overall Score: ${report.overall_score}/100
+
+## Summary
+${report.summary}
+
+## Category Scores
+- Trigger Clarity: ${report.category_scores.trigger_clarity}/100
+- Fabrication Check: ${report.category_scores.fabrication_check}/100
+- Duplication & Density: ${report.category_scores.duplication}/100
+- Actionability: ${report.category_scores.actionability}/100
+- Anti-Pattern Completeness: ${report.category_scores.anti_pattern_completeness}/100
+
+## Audit Findings (${report.issues.length} detected)
+${
+  report.issues.length === 0
+    ? 'No issues detected. Clean production rule.'
+    : report.issues
+        .map(
+          (i, idx) =>
+            `### ${idx + 1}. [${i.severity.toUpperCase()}] ${i.title} (${i.category})
+- **Explanation**: ${i.explanation}
+- **Actionable Fix**: \`${i.fix_suggestion}\`
+`
+        )
+        .join('\n')
+}
+${
+  report.rewritten_snippet
+    ? `## Refactored Snippet
+\`\`\`markdown
+${report.rewritten_snippet}
+\`\`\`
+`
+    : ''
+}`;
+
+    navigator.clipboard.writeText(mdContent);
+    setCopiedReport(true);
+    setTimeout(() => setCopiedReport(false), 2000);
+  };
+
   const lineCount = content ? content.split('\n').length : 0;
   const charCount = content ? content.length : 0;
 
@@ -431,6 +477,24 @@ ${report.rewritten_snippet}
             </div>
 
             <div className="flex items-center gap-2">
+              <button
+                onClick={handleCopyReport}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-950 hover:bg-slate-800 text-slate-200 border border-slate-800 text-xs font-medium transition-colors cursor-pointer"
+                title="Copy entire audit report to clipboard"
+              >
+                {copiedReport ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                    <span className="text-emerald-300">Copied to Clipboard</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5 text-sky-400" />
+                    <span>Copy to Clipboard</span>
+                  </>
+                )}
+              </button>
+
               <button
                 onClick={handleExportMarkdown}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-950 hover:bg-slate-800 text-slate-200 border border-slate-800 text-xs font-medium transition-colors cursor-pointer"
