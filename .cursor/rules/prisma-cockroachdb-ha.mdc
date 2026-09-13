@@ -1,6 +1,6 @@
 ---
 description: Enforces serializable transaction retry mechanics and distributed multi-region database patterns.
-globs: ["prisma/**/*.prisma","src/db/**/*.ts"]
+globs: ["prisma/**/*.prisma", "src/db/**/*.ts"]
 alwaysAvoid:
   - "Using sequential integer auto-increment primary keys which create severe distributed write hotspots"
   - "Executing multi-statement transactions without handling CockroachDB 40001 serialization failure retries"

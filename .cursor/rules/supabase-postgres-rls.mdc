@@ -1,6 +1,6 @@
 ---
 description: Enforces complete RLS protection across all tables and audited PL/pgSQL security definer functions.
-globs: ["supabase/migrations/**/*.sql","src/db/**/*.sql"]
+globs: ["supabase/migrations/**/*.sql", "src/db/**/*.sql"]
 alwaysAvoid:
   - "Creating public tables without ENABLE ROW LEVEL SECURITY"
   - "Using unauthenticated or service_role credentials in client-side Supabase SDK calls"

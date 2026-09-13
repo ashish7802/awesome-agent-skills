@@ -1,6 +1,6 @@
 ---
 description: Enforces non-blocking route concurrency, Pydantic v2 serialization, and scoped database lifecycles.
-globs: ["app/**/*.py","api/**/*.py","schemas/**/*.py","core/**/*.py"]
+globs: ["app/**/*.py", "api/**/*.py", "schemas/**/*.py", "core/**/*.py"]
 alwaysAvoid:
   - "Calling blocking synchronous I/O (time.sleep, requests.get, synchronous file operations) inside async def endpoints"
   - "Using deprecated Pydantic v1 syntax (.dict(), .parse_obj(), @validator) instead of model_dump() and field_validator"

@@ -1,6 +1,6 @@
 ---
 description: Enforces optimal sorting keys, batch insertion pipelines, and continuous materialized view aggregation.
-globs: ["analytics/**/*.sql","src/analytics/**/*.ts"]
+globs: ["analytics/**/*.sql", "src/analytics/**/*.ts"]
 alwaysAvoid:
   - "Executing single-row INSERT statements (which create too many unmerged data parts)"
   - "Sorting keys with high cardinality columns first in the ORDER BY clause"

@@ -1,6 +1,6 @@
 ---
 description: Enforces asynchronous Django ORM methods, Pydantic-based schemas, and clean routers.
-globs: ["**/api.py","**/views.py","**/schemas.py","**/models.py"]
+globs: ["**/api.py", "**/views.py", "**/schemas.py", "**/models.py"]
 alwaysAvoid:
   - "Using synchronous ORM queries (.get(), .filter(), .save()) inside async def Ninja endpoints"
   - "Mixing legacy Django Form or DRF Serializers in Django Ninja projects"

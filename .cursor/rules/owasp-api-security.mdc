@@ -1,6 +1,6 @@
 ---
 description: Enforces defense against Broken Object Level Authorization (BOLA), mass assignment, and injection attacks.
-globs: ["src/middleware/**/*.ts","api/auth/**/*.py","security/**/*.ts"]
+globs: ["src/middleware/**/*.ts", "api/auth/**/*.py", "security/**/*.ts"]
 alwaysAvoid:
   - "Relying on client-supplied IDs (e.g. req.params.accountId) without verifying logged-in user ownership (BOLA/IDOR)"
   - "Using symmetric HMAC secret keys shared across multiple independent microservices"

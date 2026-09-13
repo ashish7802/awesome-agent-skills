@@ -1,6 +1,6 @@
 ---
 description: Enforces Tailwind v4 @theme directive, semantic token naming, and removal of deprecated tailwind.config.js.
-globs: ["src/**/*.css","src/**/*.{tsx,jsx,vue,svelte}"]
+globs: ["src/**/*.css", "src/**/*.{tsx,jsx,vue,svelte}"]
 alwaysAvoid:
   - "Creating legacy tailwind.config.js or tailwind.config.ts configuration files in Tailwind v4 projects"
   - "Using arbitrary pixel values like w-[347px] instead of semantic spacing or flexbox/grid containers"

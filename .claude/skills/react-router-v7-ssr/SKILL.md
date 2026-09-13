@@ -1,6 +1,6 @@
 ---
 description: Enforces type-safe route loaders, progressive enhancement actions, and optimistic mutations.
-globs: ["app/**/*.{ts,tsx}","react-router.config.ts"]
+globs: ["app/**/*.{ts,tsx}", "react-router.config.ts"]
 alwaysAvoid:
   - "Using client-side useEffect fetching instead of route loader functions"
   - "Triggering un-typed imperative mutations without React Router Form / useFetcher"

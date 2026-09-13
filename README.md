@@ -69,15 +69,38 @@ curl -fsSL https://raw.githubusercontent.com/ashish7802/awesome-agent-skills/mai
 
 ---
 
-## 🔍 Built-In AI Quality Auditor
+## 🔍 Built-In AI Quality Auditor & Python Engine
 
-The app includes an **AI Rule Linter** that scores rule files across 5 dimensions:
+The repository includes an enterprise **Rule Quality Auditor** implemented with a dual-engine architecture:
+- **Server API**: Powered by Gemini (`gemini-flash-latest`) with automatic fallback.
+- **Python Core (`skill_auditor/`)**: Written in Python 3.10 standard library, providing deterministic evaluation, 5-dimension scoring, CLI commands, and automated file generation.
 
+It scores rule files across 5 dimensions:
 1. **Trigger Clarity**: Validates narrow globs and use-when conditions.
 2. **Fabrication Check**: Detects hallucinated APIs, fake multipliers, and hype.
 3. **Duplication & Density**: Prevents context-wasting boilerplate.
 4. **Actionability**: Replaces vague suggestions with deterministic code.
 5. **Anti-Pattern Completeness**: Mandates strict `Always Avoid` prohibitions.
+
+### 🐍 Python CLI Usage
+
+You can run the Python auditor and validator directly from the terminal:
+
+```bash
+# Audit any rule file with colored terminal report
+python3 scripts/audit_cli.py .cursor/rules/nextjs-15-approuter.mdc
+
+# Output audit results as raw JSON
+python3 scripts/audit_cli.py .cursor/rules/nextjs-15-approuter.mdc --json
+
+# Validate all 24 skills across the repository
+python3 scripts/validate_repo.py
+# or: npm run validate:skills
+
+# Regenerate all 24 rule files on disk from specification
+python3 scripts/generate_rules.py
+# or: npm run generate:rules
+```
 
 ---
 

@@ -1,6 +1,6 @@
 ---
 description: Enforces non-root container security contexts, resource requests/limits, and ArgoCD sync policies.
-globs: ["k8s/**/*.yaml","helm/**/*.yaml","argocd/**/*.yaml"]
+globs: ["k8s/**/*.yaml", "helm/**/*.yaml", "argocd/**/*.yaml"]
 alwaysAvoid:
   - "Deploying pods without securityContext (runAsNonRoot: true, readOnlyRootFilesystem: true)"
   - "Omitting memory and cpu resource requests or setting limits to infinity"

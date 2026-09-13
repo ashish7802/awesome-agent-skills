@@ -1,6 +1,6 @@
 ---
 description: Enforces Bridgeless mode, TurboModules, Expo Router typed navigation, and 60fps gesture worklets.
-globs: ["app/**/*.{tsx,ts}","plugins/**/*.js","app.json"]
+globs: ["app/**/*.{tsx,ts}", "plugins/**/*.js", "app.json"]
 alwaysAvoid:
   - "Using deprecated legacy React Native modules incompatible with Bridgeless mode or Fabric"
   - "Executing heavy computational loops on the React Native JS thread during active animations"

@@ -1,6 +1,6 @@
 ---
 description: Enforces network-level API mocking via MSW, zero manual global fetch overrides, and fast test runs.
-globs: ["src/**/*.test.ts","src/**/*.spec.tsx","vitest.config.ts"]
+globs: ["src/**/*.test.ts", "src/**/*.spec.tsx", "vitest.config.ts"]
 alwaysAvoid:
   - "Mocking global fetch using vi.fn() or jest.spyOn which masks network headers and serialization errors"
   - "Allowing mocked handlers to leak across test boundaries without server.resetHandlers()"

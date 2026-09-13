@@ -32,6 +32,7 @@ export interface AuditReport {
   timestamp?: string;
   file_name?: string;
   char_count?: number;
+  engine?: string;
 }
 
 export interface AuditHistoryItem {

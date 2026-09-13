@@ -1,6 +1,6 @@
 ---
 description: Enforces edge compute conventions, typed bindings, and edge caching.
-globs: ["src/**/*.ts","wrangler.toml","wrangler.jsonc"]
+globs: ["src/**/*.ts", "wrangler.toml", "wrangler.jsonc"]
 alwaysAvoid:
   - "Importing Node.js-only native modules without node: prefix or cloudflare: compatibility flags"
   - "Uncached external API fetch calls in high-traffic edge route handlers"

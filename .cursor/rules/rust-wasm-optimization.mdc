@@ -1,6 +1,6 @@
 ---
 description: Enforces zero-copy JS/WASM buffer sharing, allocator tuning, and SIMD vector operations.
-globs: ["crates/**/*.rs","wasm/**/*.rs","src/wasm/**/*.ts"]
+globs: ["crates/**/*.rs", "wasm/**/*.rs", "src/wasm/**/*.ts"]
 alwaysAvoid:
   - "Cloning large arrays or strings across the JS-WASM boundary using serde_wasm_bindgen"
   - "Blocking the browser UI main thread with long-running WASM computation loops"

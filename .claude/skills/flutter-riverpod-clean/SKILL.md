@@ -1,6 +1,6 @@
 ---
 description: Enforces AsyncValue pattern matching, immutable Freezed models, and presentation/domain separation.
-globs: ["lib/**/*.dart","pubspec.yaml"]
+globs: ["lib/**/*.dart", "pubspec.yaml"]
 alwaysAvoid:
   - "Using un-typed setState() in complex production screens"
   - "Accessing network repositories or databases directly inside widget build() methods"

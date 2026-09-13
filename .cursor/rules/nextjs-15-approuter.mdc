@@ -1,6 +1,6 @@
 ---
 description: Enforces React Server Component boundaries, server actions, and layout streaming.
-globs: ["app/**/*.{ts,tsx}","components/**/*.{ts,tsx}","actions/**/*.{ts,tsx}"]
+globs: ["app/**/*.{ts,tsx}", "components/**/*.{ts,tsx}", "actions/**/*.{ts,tsx}"]
 alwaysAvoid:
   - "Placing \"use client\" directive at layout.tsx or page.tsx root files"
   - "Client-side useEffect data fetching waterfalls for initial page loads"

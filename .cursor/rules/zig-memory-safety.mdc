@@ -1,6 +1,6 @@
 ---
 description: Enforces explicit allocator injection, defer cleanup guarantees, and comptime type assertions.
-globs: ["src/**/*.zig","build.zig"]
+globs: ["src/**/*.zig", "build.zig"]
 alwaysAvoid:
   - "Using hidden global allocators; every struct that allocates must accept std.mem.Allocator"
   - "Forgetting defer allocator.free(slice) or defer instance.deinit() immediately after successful allocation"

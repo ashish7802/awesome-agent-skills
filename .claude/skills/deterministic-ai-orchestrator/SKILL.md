@@ -1,6 +1,6 @@
 ---
 description: Enforces reliable LLM function calling, finite agentic loops, and typed output schema contracts.
-globs: ["agents/**/*.py","tools/**/*.py","prompts/**/*.md"]
+globs: ["agents/**/*.py", "tools/**/*.py", "prompts/**/*.md"]
 alwaysAvoid:
   - "Executing open-ended while True agent loops without max_iterations circuit breaker"
   - "Allowing LLMs to return free-form unstructured text for machine-consumed pipeline steps"

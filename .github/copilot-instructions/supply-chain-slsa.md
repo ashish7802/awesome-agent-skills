@@ -1,6 +1,6 @@
 ---
 description: Enforces immutable Action SHAs, OIDC authentication, Cosign artifact signing, and CycloneDX SBOMs.
-globs: [".github/workflows/**/*.yaml",".github/workflows/**/*.yml"]
+globs: [".github/workflows/**/*.yaml", ".github/workflows/**/*.yml"]
 alwaysAvoid:
   - "Using mutable version tags (e.g. actions/checkout@v4) instead of full immutable commit SHAs"
   - "Storing long-lived static cloud secret keys (AWS_SECRET_ACCESS_KEY) inside GitHub secrets"

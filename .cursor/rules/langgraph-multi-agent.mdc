@@ -1,6 +1,6 @@
 ---
 description: Enforces cyclic StateGraph topologies, typed reducer accumulation, and persistent checkpointer state.
-globs: ["graphs/**/*.py","nodes/**/*.py","state/**/*.py"]
+globs: ["graphs/**/*.py", "nodes/**/*.py", "state/**/*.py"]
 alwaysAvoid:
   - "Using untyped global state dictionaries across StateGraph nodes"
   - "Creating unconditional circular node transitions without exit conditional edges"

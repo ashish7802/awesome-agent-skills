@@ -1,6 +1,6 @@
 ---
 description: Enforces remote state locking, least-privilege IAM policies, and encrypted storage configurations.
-globs: ["terraform/**/*.tf","infra/**/*.tf"]
+globs: ["terraform/**/*.tf", "infra/**/*.tf"]
 alwaysAvoid:
   - "Hardcoding credentials or AWS account IDs in .tf files"
   - "Using wildcard action: \"*\" or Resource: \"*\" in IAM policy statements"

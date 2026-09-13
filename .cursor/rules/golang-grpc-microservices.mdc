@@ -1,6 +1,6 @@
 ---
 description: Enforces proper context deadline propagation, Protobuf v3 conventions, and structured error handling.
-globs: ["cmd/**/*.go","internal/**/*.go","pkg/**/*.go","proto/**/*.proto"]
+globs: ["cmd/**/*.go", "internal/**/*.go", "pkg/**/*.go", "proto/**/*.proto"]
 alwaysAvoid:
   - "Ignoring ctx.Done() in long-running goroutines or streaming RPC handlers"
   - "Using context.Background() instead of propagating incoming request context"

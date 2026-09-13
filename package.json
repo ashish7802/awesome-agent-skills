@@ -4,7 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "generate:rules": "tsx scripts/generate-rules.ts",
+    "generate:rules": "python3 scripts/generate_rules.py",
+    "validate:skills": "python3 scripts/validate_repo.py",
+    "audit:cli": "python3 scripts/audit_cli.py",
     "prebuild": "npm run generate:rules",
     "dev": "tsx server.ts",
     "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",

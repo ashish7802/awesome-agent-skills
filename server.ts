@@ -1,10 +1,69 @@
 import express from "express";
 import path from "path";
+import { spawn } from "child_process";
 import dotenv from "dotenv";
 import { GoogleGenAI } from "@google/genai";
 import { createServer as createViteServer } from "vite";
 
 dotenv.config();
+
+// Execute Python 3.10 auditor module
+function runPythonAudit(content: string, fileName?: string): Promise<{ report: any; engine: string }> {
+  return new Promise((resolve) => {
+    try {
+      const py = spawn("python3", ["-m", "skill_auditor.cli", "audit-stdin"], {
+        cwd: process.cwd(),
+      });
+
+      let stdout = "";
+      let stderr = "";
+
+      py.stdout.on("data", (d) => {
+        stdout += d.toString();
+      });
+      py.stderr.on("data", (d) => {
+        stderr += d.toString();
+      });
+
+      py.on("close", (code) => {
+        if (code === 0 && stdout.trim()) {
+          try {
+            const parsed = JSON.parse(stdout.trim());
+            parsed.file_name = fileName || "input-skill.mdc";
+            parsed.char_count = content.length;
+            parsed.timestamp = new Date().toISOString();
+            return resolve({
+              report: parsed,
+              engine: "python-3.10-engine",
+            });
+          } catch (err) {
+            console.warn("Failed to parse Python audit output, using in-memory fallback:", err);
+          }
+        }
+        resolve({
+          report: runHeuristicAudit(content, fileName),
+          engine: "heuristic-fallback",
+        });
+      });
+
+      py.on("error", (err) => {
+        console.warn("Python execution error, falling back to TypeScript:", err);
+        resolve({
+          report: runHeuristicAudit(content, fileName),
+          engine: "heuristic-fallback",
+        });
+      });
+
+      py.stdin.write(content);
+      py.stdin.end();
+    } catch {
+      resolve({
+        report: runHeuristicAudit(content, fileName),
+        engine: "heuristic-fallback",
+      });
+    }
+  });
+}
 
 // Heuristic fallback analyzer when Gemini API key is absent or offline
 function runHeuristicAudit(content: string, fileName?: string) {
@@ -175,6 +234,7 @@ async function startServer() {
     res.json({
       status: "ok",
       service: "skill-auditor",
+      pythonEngine: "Python 3.10 (skill_auditor)",
       hasGeminiKey: Boolean(process.env.GEMINI_API_KEY),
     });
   });
@@ -190,13 +250,13 @@ async function startServer() {
 
       const apiKey = process.env.GEMINI_API_KEY;
 
-      // If no API key is available, execute the deterministic heuristic auditor
+      // If no API key is available, execute the Python 3.10 auditor module
       if (!apiKey) {
-        const heuristicReport = runHeuristicAudit(content, fileName);
+        const { report: pyReport, engine: pyEngine } = await runPythonAudit(content, fileName);
         return res.json({
           success: true,
-          report: heuristicReport,
-          engine: "heuristic-fallback",
+          report: pyReport,
+          engine: pyEngine,
         });
       }
 
@@ -285,13 +345,13 @@ Return ONLY valid JSON matching this schema:
           throw lastErr || new Error("Empty response from Gemini API");
         }
       } catch (geminiError) {
-        console.warn("[Gemini API] Failed or overloaded, seamlessly engaging heuristic auditor fallback:", geminiError);
-        const fallbackReport = runHeuristicAudit(content, fileName);
+        console.warn("[Gemini API] Failed or overloaded, seamlessly engaging Python auditor fallback:", geminiError);
+        const { report: fallbackReport, engine: fallbackEngine } = await runPythonAudit(content, fileName);
         return res.json({
           success: true,
           report: fallbackReport,
-          engine: "heuristic-fallback",
-          notice: "Audit completed using deterministic rule validator (AI model experienced temporary load spike).",
+          engine: fallbackEngine,
+          notice: "Audit completed using Python deterministic rule validator (AI model experienced temporary load spike).",
         });
       }
 
@@ -301,8 +361,9 @@ Return ONLY valid JSON matching this schema:
         const cleaned = responseText.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
         parsedReport = JSON.parse(cleaned);
       } catch (parseErr) {
-        console.warn("Failed to parse Gemini JSON output, using heuristic fallback:", parseErr);
-        parsedReport = runHeuristicAudit(content, fileName);
+        console.warn("Failed to parse Gemini JSON output, using Python fallback:", parseErr);
+        const { report: pyReport } = await runPythonAudit(content, fileName);
+        parsedReport = pyReport;
       }
 
       parsedReport.file_name = fileName || 'input-skill.mdc';
@@ -319,11 +380,11 @@ Return ONLY valid JSON matching this schema:
       // Fallback on error to ensure user experience never breaks
       const { content, fileName } = req.body || {};
       if (content && typeof content === "string") {
-        const fallbackReport = runHeuristicAudit(content, fileName);
+        const { report: fallbackReport, engine: fallbackEngine } = await runPythonAudit(content, fileName);
         return res.json({
           success: true,
           report: fallbackReport,
-          engine: "heuristic-fallback",
+          engine: fallbackEngine,
         });
       }
       const errorMessage = err instanceof Error ? err.message : "Audit processing failed";

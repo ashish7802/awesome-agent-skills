@@ -1,6 +1,6 @@
 ---
 description: Enforces user-centric locators, hermetic test fixtures, and automated accessibility auditing.
-globs: ["e2e/**/*.spec.ts","tests/**/*.spec.ts","playwright.config.ts"]
+globs: ["e2e/**/*.spec.ts", "tests/**/*.spec.ts", "playwright.config.ts"]
 alwaysAvoid:
   - "Using fragile CSS selectors (#id, .class > div) instead of accessible getByRole or getByLabel"
   - "Adding hardcoded arbitrary page.waitForTimeout(5000) sleeps (causes flaky builds)"
